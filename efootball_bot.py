@@ -24,7 +24,7 @@ if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 # 🔴 MUHIM: O'ZINGIZNING MA'LUMOTLARINGIZNI YOZING
-CHANNEL_ID = -1001234567890  # 👈 SIZNING KANAL ID (o'zgartiring)
+CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
 ADMIN_IDS = [6042457335]      # 👈 SIZNING ID
 
 UZ_TZ = pytz.timezone("Asia/Tashkent")
