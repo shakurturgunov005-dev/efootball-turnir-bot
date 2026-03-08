@@ -7,7 +7,6 @@ router = Router()
 
 # ================= ADMIN KEYBOARD =================
 def admin_keyboard():
-    """Admin panel uchun klaviatura"""
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="📋 Ishtirokchilar")],
@@ -15,11 +14,11 @@ def admin_keyboard():
             [KeyboardButton(text="📢 Post yuborish")],
             [KeyboardButton(text="💰 To'lov tekshirish")],
             [KeyboardButton(text="⚽️ Match yaratish")],
+            [KeyboardButton(text="📝 Ro'yxatni tahrirlash")],  # 🔥 YANGI
             [KeyboardButton(text="🗑 Tozalash")]
         ],
         resize_keyboard=True
     )
-
 # ================= ISHTIROKCHILAR =================
 @router.message(F.text == "📋 Ishtirokchilar")
 async def show_players(message: types.Message):
