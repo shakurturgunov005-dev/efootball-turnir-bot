@@ -1,12 +1,15 @@
 import asyncio
 import logging
-from aiogram import Bot, Dispatcher
+from aiogram import Bot, Dispatcher, types
 from aiogram.types import BotCommand
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+import uvicorn
 
 from config import BOT_TOKEN, ADMIN_IDS
 from database import db
 from utils.channel import init_channel_post
-from handlers import edit  # 🔥 YANGI
+from handlers import edit
 
 # Handlerlarni import qilish
 from handlers import (
@@ -27,6 +30,7 @@ logger = logging.getLogger(__name__)
 # Bot va dispatcher
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
+app = FastAPI()
 
 # ================= ROUTERLARNI ULASH =================
 async def include_routers():
@@ -52,9 +56,10 @@ async def set_commands():
     await bot.set_my_commands(commands)
     logger.info("✅ Komandalar o'rnatildi")
 
-# ================= BOTNI ISHGA TUSHIRISH =================
-async def main():
-    """Asosiy funksiya"""
+# ================= FASTAPI EVENTLARI =================
+@app.on_event("startup")
+async def on_startup():
+    """Bot ishga tushganda"""
     logger.info("🚀 Bot ishga tushmoqda...")
     
     try:
@@ -73,23 +78,32 @@ async def main():
         # Komandalar
         await set_commands()
         
-        # Botni polling rejimida ishga tushirish
         logger.info("✅ Bot ishga tushdi!")
-        await dp.start_polling(bot)
         
     except Exception as e:
         logger.error(f"❌ Xatolik: {e}")
         raise
-    finally:
-        # Databaseni yopish
-        await db.close()
-        logger.info("👋 Bot to'xtatildi")
+
+@app.on_event("shutdown")
+async def on_shutdown():
+    """Bot to'xtaganda"""
+    await db.close()
+    logger.info("👋 Bot to'xtatildi")
+
+# ================= WEBHOOK =================
+@app.post("/webhook")
+async def webhook(request: Request):
+    """Telegram webhook so'rovlarini qabul qilish"""
+    try:
+        data = await request.json()
+        update = types.Update(**data)
+        await dp.feed_update(bot, update)
+        return JSONResponse({"ok": True})
+    except Exception as e:
+        logger.error(f"Webhook xatolik: {e}")
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 # ================= ISHGA TUSHIRISH =================
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        logger.info("👋 Bot to'xtatildi (Ctrl+C)")
-    except Exception as e:
-        logger.error(f"❌ Kutilmagan xatolik: {e}")
+    port = int(os.environ.get("PORT", 8080))
+    uvicorn.run(app, host="0.0.0.0", port=port)
