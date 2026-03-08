@@ -108,11 +108,11 @@ from handlers import start,registration,payment,admin,matches
 bot = Bot(BOT_TOKEN)
 dp = Dispatcher()
 
-start.register(dp)
-registration.register(dp)
-payment.register(dp)
-admin.register(dp)
-matches.register(dp)
+dp.include_router(start.router)
+dp.include_router(registration.router)
+dp.include_router(payment.router)
+dp.include_router(admin.router)
+dp.include_router(matches.router)
 
 async def main():
 
