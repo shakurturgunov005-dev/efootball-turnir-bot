@@ -109,19 +109,12 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     uvicorn.run(app, host="0.0.0.0", port=port)
      
-# ================= TEST TUGMA (vaqtinchalik) =================
+# =============== SODDA TEST ===============
 @router.message(Command("test"))
-async def test_button(message: types.Message):
-    """Test tugmasi"""
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="🔴 TEST TUGMA", callback_data="test")]
-        ]
-    )
-    await message.answer("Test tugmasini bosing:", reply_markup=keyboard)
+async def simple_test(message: types.Message):
+    await message.answer("✅ Test ishladi!")
 
 @router.callback_query(F.data == "test")
-async def test_callback(callback: types.CallbackQuery):
-    """Test tugma bosilganda"""
-    await callback.message.answer("✅ Test tugma ishladi!")
+async def simple_callback(callback: types.CallbackQuery):
+    await callback.message.answer("✅ Callback ishladi!")
     await callback.answer()
