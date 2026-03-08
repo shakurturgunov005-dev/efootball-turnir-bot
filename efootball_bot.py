@@ -149,70 +149,8 @@ async def start(msg: types.Message):
     )
         
 #handlers/registration.py
-from aiogram import F,types
-from database import connect
-from config import MAX_PLAYERS
 
-def register(dp):
 
-    @dp.callback_query(F.data=="join")
-    async def join(call:types.CallbackQuery):
-
-        conn = await connect()
-
-        count = await conn.fetchval(
-            "SELECT COUNT(*) FROM players WHERE payment=TRUE"
-        )
-
-        if count >= MAX_PLAYERS:
-
-            await call.message.answer("❌ Turnir to'lgan")
-
-            return
-
-        await call.message.answer(
-            "Format:\n\n"
-            "Ism\nGame username\nTelegram username"
-        )
-
-    @dp.message()
-    async def register_user(msg:types.Message):
-
-        if msg.photo:
-            return
-
-        text = msg.text.split("\n")
-
-        if len(text)<3:
-            return
-
-        conn = await connect()
-
-        try:
-
-            await conn.execute(
-                """
-                INSERT INTO players(user_id,name,game_username,tg_username)
-                VALUES($1,$2,$3,$4)
-                """,
-                msg.from_user.id,
-                text[0],
-                text[1],
-                text[2]
-            )
-
-        except:
-
-            await msg.answer("Siz allaqachon yozilgansiz")
-
-            return
-
-        await msg.answer(
-            "💳 Turnir badali 300₽\n"
-            "Karta: 2202 2063 4229 7533\n\n"
-            "Screenshot yuboring"
-        )
-        
 #handlers/payment.py
 from aiogram import F,types
 from config import ADMIN_ID
