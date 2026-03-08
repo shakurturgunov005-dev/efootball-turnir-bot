@@ -37,10 +37,11 @@ scheduler = AsyncIOScheduler(timezone=UZ_TZ)
 db_pool = None
 MAX_PLAYERS = 16
 
-# 💰 TO'LOV MA'LUMOTLARI
-CARD_NUMBER = "1234 5678 9012 3456"  # 👈 O'Z KARTANGIZ
-CARD_HOLDER = "SHUKURULLO TURGUNOV"  # 👈 KARTADAGI ISM
-PAYMENT_AMOUNT = 300  # 300 rubl
+# 💰 TO'LOV MA'LUMOTLARI (o'zgartiring)
+CARD_NUMBER = "8600 1234 5678 9012"  # 👈 MISOL UCHUN
+CARD_HOLDER = "IVANOV IVAN"          # 👈 MISOL UCHUN
+PAYMENT_AMOUNT = 300                  # 300 rubl
+RUB = "₽"                             # Rubl belgisi
 
 # ================= DATABASE =================
 async def init_db():
@@ -142,7 +143,6 @@ async def handle_registration(message: Message):
             await message.answer("❌ Barcha maydonlarni to'ldiring!")
             return
         
-        # Databasega vaqtincha saqlash (to'lov qilinmagan)
         async with db_pool.acquire() as conn:
             existing = await conn.fetchval(
                 "SELECT user_id FROM tournament_players WHERE user_id = $1",
@@ -173,7 +173,6 @@ async def handle_registration(message: Message):
             reply_markup=confirm_keyboard
         )
         
-        # Foydalanuvchi ID sini callback_data uchun saqlash
         await confirm_msg.edit_text(
             confirm_msg.text,
             reply_markup=confirm_keyboard
@@ -187,14 +186,13 @@ async def handle_registration(message: Message):
 async def confirm_yes(callback: CallbackQuery):
     """Foydalanuvchi HA ni bosdi"""
     
-    # So'rov xabarini o'chirish
     await callback.message.delete()
     
-    # To'lov ma'lumotlarini yuborish
+    # To'lov ma'lumotlari (₽ muammosi hal qilingan)
     payment_text = f"""
 💳 **TO'LOV MA'LUMOTLARI**
 
-Turnirda ishtirok etish uchun {PAYMENT_AMOUNT} ₽ to'lashingiz kerak.
+Turnirda ishtirok etish uchun {PAYMENT_AMOUNT} {RUB} to'lashingiz kerak.
 
 **Karta raqami:** `{CARD_NUMBER}`
 **Qabul qiluvchi:** {CARD_HOLDER}
@@ -210,17 +208,13 @@ Admin to'lovni tasdiqlagach, ro'yxatdan o'tgan hisoblanasiz.
 async def confirm_no(callback: CallbackQuery):
     """Foydalanuvchi YO'Q ni bosdi"""
     
-    # So'rov xabarini o'chirish
     await callback.message.delete()
     
-    # Bekor qilish xabarini yuborish va o'chirish
     cancel_msg = await callback.message.answer("❌ Ro'yxatdan o'tish bekor qilindi.")
     
-    # 5 sekunddan keyin xabarni o'chirish
     await asyncio.sleep(5)
     await cancel_msg.delete()
     
-    # Foydalanuvchi ma'lumotlarini database'dan o'chirish (agar kerak bo'lsa)
     async with db_pool.acquire() as conn:
         await conn.execute(
             "DELETE FROM tournament_players WHERE user_id = $1 AND payment_status = FALSE",
@@ -258,7 +252,6 @@ async def handle_payment_photo(message: Message):
     
     await message.answer("✅ To'lov cheki qabul qilindi. Admin tekshirgach, ro'yxatdan o'tasiz.")
     
-    # Adminlarga xabar yuborish
     for admin_id in ADMIN_IDS:
         try:
             await bot.send_message(
@@ -273,7 +266,6 @@ async def handle_payment_photo(message: Message):
 # ================= ADMIN PAYMENT HANDLERS =================
 @dp.message(F.text == "💰 To'lovni tekshirish")
 async def check_payments(message: Message):
-    """To'lov qilganlarni ko'rish"""
     if message.from_user.id not in ADMIN_IDS:
         return
     
@@ -298,7 +290,6 @@ async def check_payments(message: Message):
 
 @dp.message(F.text.startswith("/confirm_"))
 async def confirm_payment(message: Message):
-    """To'lovni tasdiqlash"""
     if message.from_user.id not in ADMIN_IDS:
         return
     
@@ -320,7 +311,6 @@ async def confirm_payment(message: Message):
                 "SELECT COUNT(*) FROM tournament_players WHERE payment_status = TRUE"
             )
         
-        # Foydalanuvchiga xabar
         try:
             await bot.send_message(
                 user_id,
@@ -329,7 +319,6 @@ async def confirm_payment(message: Message):
         except:
             pass
         
-        # Kanala xabar
         await bot.send_message(
             chat_id=CHANNEL_ID,
             text=f"{count}. {user['full_name']}"
@@ -342,7 +331,6 @@ async def confirm_payment(message: Message):
 
 @dp.message(F.text == "✅ To'lovni tasdiqlash")
 async def confirm_payment_button(message: Message):
-    """To'lovni tasdiqlash uchun qo'llanma"""
     if message.from_user.id not in ADMIN_IDS:
         return
     
@@ -360,7 +348,6 @@ Yoki qo'lda:
 # ================= ADMIN HANDLERS =================
 @dp.message(F.text == "📋 Ishtirokchilar")
 async def show_players(message: Message):
-    """Ishtirokchilar ro'yxatini ko'rish"""
     if message.from_user.id not in ADMIN_IDS:
         return
     
@@ -423,12 +410,12 @@ async def send_post(message: Message):
 🎮 eFootball TURNIRI ⚽️
 ━━━━━━━━━━━━━━━━━━
 
-🏆 **Sovrin:** Kamida 11ta sovrindor.
+🏆 **Sovrin:** Kamida 11ta sovrindor
 📅 **Sana:** 2026.03.10
 ⏰ **Vaqt:** 20:00
 👥 **Ishtirokchilar:** 16 kishi
-💰 **To'lov:** {300} ₽
-💳 **Karta:** {2202 2063 4229 7533}
+💰 **To'lov:** {PAYMENT_AMOUNT} {RUB}
+💳 **Karta:** {CARD_NUMBER}
 
 ✅ Ro'yxatdan o'tish uchun tugmani bosing!
 ━━━━━━━━━━━━━━━━━━
