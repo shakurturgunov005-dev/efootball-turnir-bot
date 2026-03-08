@@ -34,12 +34,17 @@ async def about_command(message: types.Message):
     """
     await message.answer(text, parse_mode="Markdown")
 
-# =============== TEST TUGMALAR ===============
+# ================= TEST TUGMASI =================
 @router.message(Command("test"))
-async def simple_test(message: types.Message):
-    await message.answer("✅ Test ishladi!")
+async def test_button(message: types.Message):
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="✅ TEST", callback_data="test")]
+        ]
+    )
+    await message.answer("Test tugmasini bosing:", reply_markup=keyboard)
 
 @router.callback_query(F.data == "test")
-async def simple_callback(callback: types.CallbackQuery):
-    await callback.message.answer("✅ Callback ishladi!")
+async def test_callback(callback: types.CallbackQuery):
+    await callback.message.answer("✅ Test ishladi!")
     await callback.answer()
