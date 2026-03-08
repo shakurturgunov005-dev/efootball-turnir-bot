@@ -1,187 +1,272 @@
-import asyncio
 import os
-import asyncpg
-from aiogram import Bot, Dispatcher, types, F
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from aiogram.filters import CommandStart
-from aiogram.enums import ParseMode
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-ADMIN_ID = 123456789  # admin id
-CHANNEL_ID = -1001234567890  # kanal id
+ADMIN_ID = int(os.getenv("ADMIN_ID"))
+CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
 
-bot = Bot(BOT_TOKEN, parse_mode=ParseMode.HTML)
-dp = Dispatcher()
+MAX_PLAYERS = 16
 
-# DATABASE
-async def connect_db():
+#database.py
+import asyncpg
+from config import DATABASE_URL
+
+async def connect():
     return await asyncpg.connect(DATABASE_URL)
 
-async def create_table():
-    conn = await connect_db()
+async def setup():
+    conn = await connect()
+
     await conn.execute("""
     CREATE TABLE IF NOT EXISTS players(
         id SERIAL PRIMARY KEY,
-        user_id BIGINT,
-        full_name TEXT,
+        user_id BIGINT UNIQUE,
+        name TEXT,
         game_username TEXT,
         tg_username TEXT,
         payment BOOLEAN DEFAULT FALSE
     )
     """)
+
+    await conn.execute("""
+    CREATE TABLE IF NOT EXISTS matches(
+        id SERIAL PRIMARY KEY,
+        player1 TEXT,
+        player2 TEXT,
+        score TEXT,
+        winner TEXT,
+        round TEXT
+    )
+    """)
+
     await conn.close()
+    
+#utils/brasket.py
+import random
 
-# START
-@dp.message(CommandStart())
-async def start(message: types.Message):
-    kb = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="🏆 Turnirga yozilish", callback_data="join")]
-        ]
-    )
+def generate_bracket(players):
 
-    await message.answer(
-        "🏆 <b>eFootball TURNIR</b>\n\n"
-        "Ishtirok etish uchun tugmani bosing.",
-        reply_markup=kb
-    )
+    random.shuffle(players)
 
-# JOIN
-@dp.callback_query(F.data == "join")
-async def join(call: types.CallbackQuery):
+    matches = []
 
-    conn = await connect_db()
+    for i in range(0,16,2):
 
-    count = await conn.fetchval("SELECT COUNT(*) FROM players WHERE payment=TRUE")
+        matches.append(
+            (players[i], players[i+1])
+        )
 
-    if count >= 16:
-        await call.message.answer("❌ Turnir to'lgan")
-        return
+    text = "🏆 1/8 FINAL\n\n"
 
-    await call.message.answer(
-        "📝 Ro'yxatdan o'tish\n\n"
-        "Quyidagi formatda yuboring:\n\n"
-        "Ism:\n"
-        "Game username:\n"
-        "Telegram username:"
-    )
+    for p1,p2 in matches:
 
-# REGISTRATION
-@dp.message()
-async def register(message: types.Message):
+        text += f"{p1} 🆚 {p2}\n"
 
-    if message.photo:
-        return
+    return matches,text
+    
+#utils/channel.py
+from config import CHANNEL_ID
 
-    text = message.text.split("\n")
+CHANNEL_POST = None
 
-    if len(text) < 3:
-        return
+async def update_channel(bot, players):
 
-    name = text[0]
-    game = text[1]
-    tg = text[2]
+    global CHANNEL_POST
 
-    conn = await connect_db()
-
-    await conn.execute(
-        """
-        INSERT INTO players(user_id, full_name, game_username, tg_username)
-        VALUES($1,$2,$3,$4)
-        """,
-        message.from_user.id,
-        name,
-        game,
-        tg
-    )
-
-    await message.answer(
-        "💳 Turnir badali: 300₽\n\n"
-        "Karta:\n"
-        "2202 2063 4229 7533\n\n"
-        "To'lov qilgach screenshot yuboring."
-    )
-
-# PAYMENT SCREENSHOT
-@dp.message(F.photo)
-async def payment(message: types.Message):
-
-    photo = message.photo[-1].file_id
-
-    kb = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text="✅ Tasdiqlash",
-                    callback_data=f"ok_{message.from_user.id}"
-                ),
-                InlineKeyboardButton(
-                    text="❌ Bekor",
-                    callback_data=f"no_{message.from_user.id}"
-                )
-            ]
-        ]
-    )
-
-    await bot.send_photo(
-        ADMIN_ID,
-        photo,
-        caption=f"💰 To'lov\n\nUser: {message.from_user.id}",
-        reply_markup=kb
-    )
-
-    await message.answer("⏳ To'lov tekshirilmoqda")
-
-# ADMIN APPROVE
-@dp.callback_query(F.data.startswith("ok_"))
-async def approve(call: types.CallbackQuery):
-
-    user_id = int(call.data.split("_")[1])
-
-    conn = await connect_db()
-
-    await conn.execute(
-        "UPDATE players SET payment=TRUE WHERE user_id=$1",
-        user_id
-    )
-
-    await bot.send_message(
-        user_id,
-        "✅ To'lov tasdiqlandi. Turnirga qo'shildingiz!"
-    )
-
-    players = await conn.fetch(
-        "SELECT full_name FROM players WHERE payment=TRUE"
-    )
-
-    text = "🏆 <b>TURNIR ISHTIROKCHILARI</b>\n\n"
+    text = "🏆 TURNIR ISHTIROKCHILARI\n\n"
 
     for i,p in enumerate(players,1):
-        text += f"{i}. {p['full_name']}\n"
+
+        text += f"{i}. {p}\n"
 
     text += f"\n👥 {len(players)}/16"
 
-    await bot.send_message(CHANNEL_ID, text)
+    if CHANNEL_POST is None:
 
-    await call.answer("Tasdiqlandi")
+        msg = await bot.send_message(CHANNEL_ID,text)
 
-# ADMIN REJECT
-@dp.callback_query(F.data.startswith("no_"))
-async def reject(call: types.CallbackQuery):
+        CHANNEL_POST = msg.message_id
 
-    user_id = int(call.data.split("_")[1])
+    else:
 
-    await bot.send_message(
-        user_id,
-        "❌ To'lov qabul qilinmadi."
-    )
+        await bot.edit_message_text(
+            text,
+            CHANNEL_ID,
+            CHANNEL_POST
+        )
+    
+#bot.py
+import asyncio
+from aiogram import Bot,Dispatcher
 
-    await call.answer("Bekor qilindi")
+from config import BOT_TOKEN
+from database import setup
+
+from handlers import start,registration,payment,admin,matches
+
+bot = Bot(BOT_TOKEN)
+dp = Dispatcher()
+
+start.register(dp)
+registration.register(dp)
+payment.register(dp)
+admin.register(dp)
+matches.register(dp)
 
 async def main():
-    await create_table()
+
+    await setup()
+
     await dp.start_polling(bot)
 
-asyncio.run(main())
+if __name__ == "__main__":
+
+    asyncio.run(main())
+    
+#handlers/start.py
+from aiogram import types
+from aiogram.filters import Command
+from aiogram.types import InlineKeyboardMarkup,InlineKeyboardButton
+
+def register(dp):
+
+    @dp.message(Command("start"))
+    async def start(msg:types.Message):
+
+        kb = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(
+                    text="🏆 Turnirga yozilish",
+                    callback_data="join"
+                )]
+            ]
+        )
+
+        await msg.answer(
+            "🏆 EFOOTBALL TURNIR\n\n"
+            "Ro'yxatdan o'tish uchun tugmani bosing",
+            reply_markup=kb
+        )
+        
+#handlers/registration.py
+from aiogram import F,types
+from database import connect
+from config import MAX_PLAYERS
+
+def register(dp):
+
+    @dp.callback_query(F.data=="join")
+    async def join(call:types.CallbackQuery):
+
+        conn = await connect()
+
+        count = await conn.fetchval(
+            "SELECT COUNT(*) FROM players WHERE payment=TRUE"
+        )
+
+        if count >= MAX_PLAYERS:
+
+            await call.message.answer("❌ Turnir to'lgan")
+
+            return
+
+        await call.message.answer(
+            "Format:\n\n"
+            "Ism\nGame username\nTelegram username"
+        )
+
+    @dp.message()
+    async def register_user(msg:types.Message):
+
+        if msg.photo:
+            return
+
+        text = msg.text.split("\n")
+
+        if len(text)<3:
+            return
+
+        conn = await connect()
+
+        try:
+
+            await conn.execute(
+                """
+                INSERT INTO players(user_id,name,game_username,tg_username)
+                VALUES($1,$2,$3,$4)
+                """,
+                msg.from_user.id,
+                text[0],
+                text[1],
+                text[2]
+            )
+
+        except:
+
+            await msg.answer("Siz allaqachon yozilgansiz")
+
+            return
+
+        await msg.answer(
+            "💳 Turnir badali 300₽\n"
+            "Karta: 2202 2063 4229 7533\n\n"
+            "Screenshot yuboring"
+        )
+        
+#handlers/payment.py
+from aiogram import F,types
+from config import ADMIN_ID
+
+def register(dp):
+
+    @dp.message(F.photo)
+    async def payment(msg:types.Message):
+
+        photo = msg.photo[-1].file_id
+
+        kb = types.InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    types.InlineKeyboardButton(
+                        text="✅ Tasdiqlash",
+                        callback_data=f"ok_{msg.from_user.id}"
+                    )
+                ]
+            ]
+        )
+
+        await msg.bot.send_photo(
+            ADMIN_ID,
+            photo,
+            caption=f"To'lov\nUser:{msg.from_user.id}",
+            reply_markup=kb
+        )
+
+        await msg.answer("⏳ Tekshirilmoqda")
+        
+#handlers/admin.py
+from aiogram import F,types
+from database import connect
+from config import ADMIN_ID
+
+def register(dp):
+
+    @dp.callback_query(F.data.startswith("ok_"))
+    async def approve(call:types.CallbackQuery):
+
+        uid = int(call.data.split("_")[1])
+
+        conn = await connect()
+
+        await conn.execute(
+            "UPDATE players SET payment=TRUE WHERE user_id=$1",
+            uid
+        )
+
+        await call.bot.send_message(
+            uid,
+            "✅ Turnirga qo'shildingiz"
+        )
+
+        await call.answer("Tasdiqlandi")
