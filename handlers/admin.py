@@ -1,7 +1,7 @@
 from aiogram import Router, types, F
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 from database import db
-from config import ADMIN_IDS, MAX_PAYERS
+from config import ADMIN_IDS, MAX_PLAYERS
 
 router = Router()
 
