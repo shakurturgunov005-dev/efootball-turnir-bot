@@ -2,6 +2,7 @@ from aiogram import Router, types
 from aiogram.filters import CommandStart
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from config import ADMIN_IDS
+from aiogram.filters import CommandStart, Command
 
 router = Router()
 
@@ -31,3 +32,15 @@ Turnirga ro'yxatdan o'tish uchun quyidagi tugmani bosing:
             "👑 Admin panel:", 
             reply_markup=admin_keyboard()
         )
+
+@router.message(Command("about"))
+async def about_command(message: types.Message):
+    text = """
+🤖 **eFootball Turnir Boti** 
+
+🏆 Turnirga ro'yxatdan o'tish: /start
+👨‍💻 Developer: SHUKURULLO
+📅 2026
+⚙️ Version 2.0
+    """
+    await message.answer(text, parse_mode="Markdown")
