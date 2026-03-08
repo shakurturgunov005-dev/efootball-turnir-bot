@@ -170,20 +170,25 @@ async def register_start(callback: CallbackQuery):
     await callback.answer()
 
 # ================= REGISTRATION HANDLER =================
-@dp.message(F.text & ~F.text.startswith("/") & ~F.photo)
+@dp.message(F.text)
 async def handle_registration(message: Message):
+
+    # Agar registratsiya shabloni bo'lmasa chiqib ketadi
+    if "1️⃣ Ismingiz" not in message.text:
+        return
+
     text = message.text.strip()
     lines = text.split('\n')
-    
+
     if len(lines) < 3:
         await message.answer("❌ Noto'g'ri format. Iltimos, ko'rsatilgan shablon bo'yicha to'ldiring.")
         return
-    
+
     try:
         full_name = ""
         username = ""
         telegram_username = ""
-        
+
         for line in lines:
             if "1️⃣ Ismingiz :" in line:
                 full_name = line.replace("1️⃣ Ismingiz :", "").strip()
@@ -191,26 +196,26 @@ async def handle_registration(message: Message):
                 username = line.replace("2️⃣ eFootball username :", "").strip()
             elif "3️⃣ Telegram username :" in line:
                 telegram_username = line.replace("3️⃣ Telegram username :", "").strip()
-        
+
         if not full_name or not username or not telegram_username:
             await message.answer("❌ Barcha maydonlarni to'ldiring!")
             return
-        
+
         async with db_pool.acquire() as conn:
             existing = await conn.fetchval(
                 "SELECT user_id FROM tournament_players WHERE user_id = $1",
                 message.from_user.id
             )
-            
+
             if existing:
                 await message.answer("❌ Siz avval ro'yxatdan o'tgansiz!")
                 return
-            
+
             await conn.execute("""
                 INSERT INTO tournament_players (full_name, username, telegram_username, user_id, payment_status)
                 VALUES ($1, $2, $3, $4, $5)
             """, full_name, username, telegram_username, message.from_user.id, False)
-        
+
         confirm_keyboard = InlineKeyboardMarkup(
             inline_keyboard=[
                 [
@@ -219,12 +224,12 @@ async def handle_registration(message: Message):
                 ]
             ]
         )
-        
-        confirm_msg = await message.answer(
+
+        await message.answer(
             "⚠️ To'lovni o'zingiz xohlab qilyapsizmi?\nHech kim majburlamayaptimi?",
             reply_markup=confirm_keyboard
         )
-        
+
     except Exception as e:
         await message.answer(f"❌ Xatolik yuz berdi: {str(e)}")
 
