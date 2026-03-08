@@ -6,6 +6,7 @@ from aiogram.types import BotCommand
 from config import BOT_TOKEN, ADMIN_IDS
 from database import db
 from utils.channel import init_channel_post
+from handlers import edit  # 🔥 YANGI
 
 # Handlerlarni import qilish
 from handlers import (
@@ -35,6 +36,7 @@ async def include_routers():
     dp.include_router(payment.router)
     dp.include_router(matches.router)
     dp.include_router(admin.router)
+    dp.include_router(edit.router)
     logger.info("✅ Barcha routerlar ulandi")
 
 # ================= BUYRUQLARNI O'RNATISH =================
