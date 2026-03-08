@@ -52,7 +52,7 @@ async def init_db():
             id SERIAL PRIMARY KEY,
             full_name TEXT NOT NULL,
             username TEXT NOT NULL,
-            telegram_user TEXT NOT NULL,
+            telegram_username TEXT NOT NULL,
             user_id BIGINT UNIQUE,
             payment_status BOOLEAN DEFAULT FALSE,
             payment_photo TEXT,
@@ -182,7 +182,7 @@ async def handle_registration(message: Message):
     try:
         full_name = ""
         username = ""
-        telegram_user = ""
+        telegram_username = ""
         
         for line in lines:
             if "1️⃣ Ismingiz :" in line:
@@ -190,9 +190,9 @@ async def handle_registration(message: Message):
             elif "2️⃣ eFootball username :" in line:
                 username = line.replace("2️⃣ eFootball username :", "").strip()
             elif "3️⃣ Telegram username :" in line:
-                telegram_user = line.replace("3️⃣ Telegram username :", "").strip()
+                telegram_username = line.replace("3️⃣ Telegram username :", "").strip()
         
-        if not full_name or not username or not telegram_user:
+        if not full_name or not username or not telegram_username:
             await message.answer("❌ Barcha maydonlarni to'ldiring!")
             return
         
@@ -207,9 +207,9 @@ async def handle_registration(message: Message):
                 return
             
             await conn.execute("""
-                INSERT INTO tournament_players (full_name, username, telegram_user, user_id, payment_status)
+                INSERT INTO tournament_players (full_name, username, telegram_username, user_id, payment_status)
                 VALUES ($1, $2, $3, $4, $5)
-            """, full_name, username, telegram_user, message.from_user.id, False)
+            """, full_name, username, telegram_username, message.from_user.id, False)
         
         confirm_keyboard = InlineKeyboardMarkup(
             inline_keyboard=[
