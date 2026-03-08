@@ -124,30 +124,29 @@ if __name__ == "__main__":
 
     asyncio.run(main())
     
-#handlers/start.py
-from aiogram import types
+#=============handlers start===============
+from aiogram import Router, types
 from aiogram.filters import Command
-from aiogram.types import InlineKeyboardMarkup,InlineKeyboardButton
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-def register(dp):
+router = Router()
 
-    @dp.message(Command("start"))
-    async def start(msg:types.Message):
+@router.message(Command("start"))
+async def start(msg: types.Message):
+    kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(
+                text="🏆 Turnirga yozilish",
+                callback_data="join"
+            )]
+        ]
+    )
 
-        kb = InlineKeyboardMarkup(
-            inline_keyboard=[
-                [InlineKeyboardButton(
-                    text="🏆 Turnirga yozilish",
-                    callback_data="join"
-                )]
-            ]
-        )
-
-        await msg.answer(
-            "🏆 EFOOTBALL TURNIR\n\n"
-            "Ro'yxatdan o'tish uchun tugmani bosing",
-            reply_markup=kb
-        )
+    await msg.answer(
+        "🏆 EFOOTBALL TURNIR\n\n"
+        "Ro'yxatdan o'tish uchun tugmani bosing",
+        reply_markup=kb
+    )
         
 #handlers/registration.py
 from aiogram import F,types
