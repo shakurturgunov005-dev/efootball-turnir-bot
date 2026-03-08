@@ -154,10 +154,10 @@ async def handle_registration(message: Message):
                 return
             
             await conn.execute("""
-                INSERT INTO tournament_players (full_name, efootball_username, telegram_username, user_id, payment_status)
-                VALUES ($1, $2, $3, $4, $5)
+               INSERT INTO tournament_players (full_name, username, telegram_username, user_id, payment_status)
+               VALUES ($1, $2, $3, $4, $5)
             """, full_name, efootball_username, telegram_username, message.from_user.id, False)
-        
+            
         # So'rov yuborish (✅ HA / ❌ YO'Q tugmalari bilan)
         confirm_keyboard = InlineKeyboardMarkup(
             inline_keyboard=[
@@ -365,7 +365,7 @@ async def show_players(message: Message):
     
     for row in rows:
         text += f"{row['id']}. {row['full_name']}\n"
-        text += f"   ⚽ eFootball: @{row['efootball_username']}\n"
+        text += f"   ⚽ eFootball: @{row['username']}\n"
         text += f"   📱 Telegram: @{row['telegram_username']}\n"
         text += f"   ✅ To'lov: tasdiqlangan\n\n"
     
