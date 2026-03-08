@@ -24,6 +24,10 @@ async def register_start(callback: types.CallbackQuery):
 async def handle_registration(message: types.Message):
     """Foydalanuvchi yuborgan ma'lumotlarni qabul qilish"""
     
+    # 🔥 FAQAT ro'yxatdan o'tish shabloniga o'xshash xabarlarni qabul qilish
+    if not ("1️⃣" in message.text and "2️⃣" in message.text and "3️⃣" in message.text):
+        return  # Hech narsa qilma, boshqa handler ishlasin
+    
     text = message.text.strip()
     lines = text.split('\n')
     
