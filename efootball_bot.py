@@ -36,16 +36,16 @@ scheduler = AsyncIOScheduler(timezone=UZ_TZ)
 
 db_pool = None
 MAX_PLAYERS = 16
+LAST_POST_ID = None  # Kanal oxirgi post ID
 
-# 💰 TO'LOV MA'LUMOTLARI
-CARD_NUMBER = "8600 1234 5678 9012"
-CARD_HOLDER = "IVANOV IVAN"
+# 💰 TO'LOV MA'LUMOTLARI (o'z kartangizni yozing)
+CARD_NUMBER = "2202 2063 4229 7533"
+CARD_HOLDER = "SHUKURULLO TURGUNOV"
 PAYMENT_AMOUNT = 300
 RUB = "₽"
 
 # ================= DATABASE =================
 async def init_db():
-    """Jadvalni to'g'ri ustunlar bilan yaratish"""
     async with db_pool.acquire() as conn:
         await conn.execute("""
         CREATE TABLE IF NOT EXISTS tournament_players (
@@ -82,8 +82,50 @@ REGISTRATION_TEMPLATE = """
 2️⃣ eFootball username : 
 3️⃣ Telegram username : 
 
-📌 To'ldirib, shu joyga qayta yuboring.
+📌 To'ldirib, shu botga qayta yuboring.
 """
+
+# ================= RO'YXATNI YANGILASH =================
+async def update_tournament_list():
+    global LAST_POST_ID
+    
+    async with db_pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT * FROM tournament_players WHERE payment_status = TRUE ORDER BY id"
+        )
+    
+    if not rows:
+        text = "📋 TURNIR RO'YXATI\n\nHali hech kim ro'yxatdan o'tmagan."
+    else:
+        text = "📋 TURNIR RO'YXATI\n\n"
+        for i, row in enumerate(rows, 1):
+            text += f"{i}. {row['full_name']}\n"
+    
+    register_button = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="📝 Turnirga ro'yxatdan o'tish", callback_data="register_start")]
+        ]
+    )
+    
+    if LAST_POST_ID is None:
+        msg = await bot.send_message(
+            chat_id=CHANNEL_ID,
+            text=text,
+            reply_markup=register_button
+        )
+        LAST_POST_ID = msg.message_id
+    else:
+        try:
+            await bot.delete_message(chat_id=CHANNEL_ID, message_id=LAST_POST_ID)
+        except:
+            pass
+        
+        msg = await bot.send_message(
+            chat_id=CHANNEL_ID,
+            text=text,
+            reply_markup=register_button
+        )
+        LAST_POST_ID = msg.message_id
 
 # ================= COMMAND HANDLERS =================
 @dp.message(CommandStart())
@@ -107,6 +149,19 @@ Turnirga ro'yxatdan o'tish uchun quyidagi tugmani bosing:
         await message.answer("Admin panel:", reply_markup=admin_keyboard())
     else:
         await message.answer(text, reply_markup=register_button, parse_mode="Markdown")
+
+@dp.message(Command("about"))
+async def about_command(message: Message):
+    text = """
+🎮 **eFootball Turnir Boti** v2.0
+
+🏆 Turnirga ro'yxatdan o'tish:
+   /start
+
+👨‍💻 Developer: @Shukurullo
+📅 2026
+"""
+    await message.answer(text, parse_mode="Markdown")
 
 # ================= CALLBACK HANDLERS =================
 @dp.callback_query(F.data == "register_start")
@@ -167,11 +222,6 @@ async def handle_registration(message: Message):
         
         confirm_msg = await message.answer(
             "⚠️ To'lovni o'zingiz xohlab qilyapsizmi?\nHech kim majburlamayaptimi?",
-            reply_markup=confirm_keyboard
-        )
-        
-        await confirm_msg.edit_text(
-            confirm_msg.text,
             reply_markup=confirm_keyboard
         )
         
@@ -246,7 +296,7 @@ async def handle_payment_photo(message: Message):
         try:
             await bot.send_message(
                 admin_id,
-                f"💰 **Yangi to'lov keldi!**\n\n👤 {user['full_name']}\n🆔 {user_id}\n\nChekni tekshirish uchun pastdagi tugmani bosing:",
+                f"💰 **Yangi to'lov keldi!**\n\n👤 {user['full_name']}\n🆔 {user_id}",
                 parse_mode="Markdown"
             )
             await bot.send_photo(admin_id, photo_id)
@@ -291,30 +341,16 @@ async def confirm_payment(message: Message):
                 "UPDATE tournament_players SET payment_status = TRUE WHERE user_id = $1",
                 user_id
             )
-            
-            user = await conn.fetchrow(
-                "SELECT * FROM tournament_players WHERE user_id = $1",
-                user_id
-            )
-            
-            count = await conn.fetchval(
-                "SELECT COUNT(*) FROM tournament_players WHERE payment_status = TRUE"
-            )
+            user = await conn.fetchrow("SELECT * FROM tournament_players WHERE user_id = $1", user_id)
+            count = await conn.fetchval("SELECT COUNT(*) FROM tournament_players WHERE payment_status = TRUE")
         
         try:
-            await bot.send_message(
-                user_id,
-                f"✅ Tabriklaymiz! To'lovingiz tasdiqlandi.\nSiz {count}-ishtirokchi bo'ldingiz!"
-            )
+            await bot.send_message(user_id, f"✅ To'lovingiz tasdiqlandi! Siz {count}-ishtirokchi bo'ldingiz!")
         except:
             pass
         
-        await bot.send_message(
-            chat_id=CHANNEL_ID,
-            text=f"{count}. {user['full_name']}"
-        )
-        
-        await message.answer(f"✅ To'lov tasdiqlandi! {user['full_name']} {count}-ishtirokchi.")
+        await update_tournament_list()
+        await message.answer(f"✅ Tasdiqlandi! {user['full_name']} ({count})")
         
     except Exception as e:
         await message.answer(f"❌ Xatolik: {str(e)}")
@@ -329,9 +365,6 @@ async def confirm_payment_button(message: Message):
 
 1. /check_payments - tekshirilmagan to'lovlarni ko'ring
 2. Har bir foydalanuvchi yonidagi `/confirm_123456` ni bosing
-
-Yoki qo'lda:
-/confirm_123456 - (123456 o'rniga user_id yozing)
 """
     await message.answer(text, parse_mode="Markdown")
 
@@ -350,14 +383,10 @@ async def show_players(message: Message):
         await message.answer("📭 Hali hech kim ro'yxatdan o'tmagan.")
         return
     
-    text = f"📋 **Turnir ishtirokchilari** ({len(rows)}/{MAX_PLAYERS})\n"
-    text += "━━━━━━━━━━━━━━━━━━\n\n"
+    text = f"📋 **Turnir ishtirokchilari** ({len(rows)}/{MAX_PLAYERS})\n\n"
     
     for row in rows:
-        text += f"{row['id']}. {row['full_name']}\n"
-        text += f"   ⚽ eFootball: @{row['username']}\n"
-        text += f"   📱 Telegram: @{row['telegram_user']}\n"
-        text += f"   ✅ To'lov: tasdiqlangan\n\n"
+        text += f"{row['id']}. {row['full_name']} - @{row['username']}\n"
     
     await message.answer(text, parse_mode="Markdown")
 
@@ -372,54 +401,21 @@ async def show_stats(message: Message):
         waiting = await conn.fetchval("SELECT COUNT(*) FROM tournament_players WHERE payment_status = FALSE AND payment_photo IS NOT NULL")
     
     text = f"""
-━━━━━━━━━━━━━━━━━━
 📊 STATISTIKA
-━━━━━━━━━━━━━━━━━━
 
 👥 Jami ro'yxatdan o'tgan: {total}
 ✅ To'lov qilgan: {paid}
 ⏳ Tekshirilmagan: {waiting}
 🕐 Bo'sh joy: {MAX_PLAYERS - paid}
-━━━━━━━━━━━━━━━━━━
 """
-    await message.answer(f"<pre>{text}</pre>", parse_mode="HTML")
+    await message.answer(text)
 
 @dp.message(F.text == "📢 Kanalga post yuborish")
-async def send_post(message: Message):
+async def send_initial_post(message: Message):
     if message.from_user.id not in ADMIN_IDS:
         return
-    
-    register_button = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="📝 Turnirga ro'yxatdan o'tish", callback_data="register_start")]
-        ]
-    )
-    
-    post_text = f"""
-━━━━━━━━━━━━━━━━━━
-🎮 eFootball TURNIRI ⚽️
-━━━━━━━━━━━━━━━━━━
-
-🏆 **Sovrin:** Kamida 11ta sovrindor
-📅 **Sana:** 2026.03.10
-⏰ **Vaqt:** 20:00
-👥 **Ishtirokchilar:** 16 kishi
-💰 **To'lov:** {300} {RUB}
-💳 **Karta:** {2202 2063 4229 7533}
-👤 **Sberbank**
-
-✅ Ro'yxatdan o'tish uchun tugmani bosing!
-━━━━━━━━━━━━━━━━━━
-"""
-    
-    await bot.send_message(
-        chat_id=CHANNEL_ID,
-        text=post_text,
-        reply_markup=register_button,
-        parse_mode="Markdown"
-    )
-    
-    await message.answer("✅ Post kanalga yuborildi!")
+    await update_tournament_list()
+    await message.answer("✅ Post yuborildi!")
 
 @dp.message(F.text == "🗑 Ro'yxatni tozalash")
 async def clear_players(message: Message):
@@ -439,6 +435,7 @@ async def clear_players(message: Message):
 async def clear_yes(callback: CallbackQuery):
     async with db_pool.acquire() as conn:
         await conn.execute("DELETE FROM tournament_players")
+        LAST_POST_ID = None
     await callback.message.edit_text("✅ Ro'yxat tozalandi!")
     await callback.answer()
 
@@ -446,20 +443,6 @@ async def clear_yes(callback: CallbackQuery):
 async def clear_no(callback: CallbackQuery):
     await callback.message.edit_text("❌ Bekor qilindi")
     await callback.answer()
-
-@dp.message(Command("about"))
-async def about_command(message: Message):
-    text = """
-🎮 **eFootball Turnir Boti**
-
-🏆 Turnirga ro'yxatdan o'tish:
-   /start
-
-👨‍💻 Developer: @Shukurullo
-📅 2026
-⚙️ Version 2.1
-"""
-    await message.answer(text, parse_mode="Markdown")
 
 # ================= STARTUP =================
 @app.on_event("startup")
@@ -473,7 +456,7 @@ async def startup():
         ]
         await bot.set_my_commands(commands)
         
-        print(f"🔄 Database ga ulanish...")
+        print("🔄 Database ga ulanish...")
         db_pool = await asyncpg.create_pool(DATABASE_URL)
         await init_db()
         print("✅ Database tayyor!")
@@ -486,8 +469,6 @@ async def startup():
         
     except Exception as e:
         print(f"❌ XATOLIK: {e}")
-        import traceback
-        traceback.print_exc()
 
 # ================= WEBHOOK =================
 @app.post("/webhook")
