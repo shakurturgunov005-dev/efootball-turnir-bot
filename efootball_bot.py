@@ -37,21 +37,22 @@ scheduler = AsyncIOScheduler(timezone=UZ_TZ)
 db_pool = None
 MAX_PLAYERS = 16
 
-# 💰 TO'LOV MA'LUMOTLARI (o'zgartiring)
-CARD_NUMBER = "8600 1234 5678 9012"  # 👈 MISOL UCHUN
-CARD_HOLDER = "IVANOV IVAN"          # 👈 MISOL UCHUN
-PAYMENT_AMOUNT = 300                  # 300 rubl
-RUB = "₽"                             # Rubl belgisi
+# 💰 TO'LOV MA'LUMOTLARI
+CARD_NUMBER = "8600 1234 5678 9012"
+CARD_HOLDER = "IVANOV IVAN"
+PAYMENT_AMOUNT = 300
+RUB = "₽"
 
 # ================= DATABASE =================
 async def init_db():
+    """Jadvalni to'g'ri ustunlar bilan yaratish"""
     async with db_pool.acquire() as conn:
         await conn.execute("""
         CREATE TABLE IF NOT EXISTS tournament_players (
             id SERIAL PRIMARY KEY,
             full_name TEXT NOT NULL,
-            efootball_username TEXT NOT NULL,
-            telegram_username TEXT NOT NULL,
+            username TEXT NOT NULL,
+            telegram_user TEXT NOT NULL,
             user_id BIGINT UNIQUE,
             payment_status BOOLEAN DEFAULT FALSE,
             payment_photo TEXT,
@@ -110,15 +111,12 @@ Turnirga ro'yxatdan o'tish uchun quyidagi tugmani bosing:
 # ================= CALLBACK HANDLERS =================
 @dp.callback_query(F.data == "register_start")
 async def register_start(callback: CallbackQuery):
-    """Ro'yxatdan o'tishni boshlash"""
     await callback.message.answer(REGISTRATION_TEMPLATE, parse_mode="Markdown")
     await callback.answer()
 
 # ================= REGISTRATION HANDLER =================
 @dp.message(F.text & ~F.text.startswith("/") & ~F.photo)
 async def handle_registration(message: Message):
-    """Foydalanuvchi yuborgan ma'lumotlarni qabul qilish"""
-    
     text = message.text.strip()
     lines = text.split('\n')
     
@@ -128,18 +126,18 @@ async def handle_registration(message: Message):
     
     try:
         full_name = ""
-        efootball_username = ""
-        telegram_username = ""
+        username = ""
+        telegram_user = ""
         
         for line in lines:
             if "1️⃣ Ismingiz :" in line:
                 full_name = line.replace("1️⃣ Ismingiz :", "").strip()
             elif "2️⃣ eFootball username :" in line:
-                efootball_username = line.replace("2️⃣ eFootball username :", "").strip()
+                username = line.replace("2️⃣ eFootball username :", "").strip()
             elif "3️⃣ Telegram username :" in line:
-                telegram_username = line.replace("3️⃣ Telegram username :", "").strip()
+                telegram_user = line.replace("3️⃣ Telegram username :", "").strip()
         
-        if not full_name or not efootball_username or not telegram_username:
+        if not full_name or not username or not telegram_user:
             await message.answer("❌ Barcha maydonlarni to'ldiring!")
             return
         
@@ -154,11 +152,10 @@ async def handle_registration(message: Message):
                 return
             
             await conn.execute("""
-               INSERT INTO tournament_players (full_name, username, telegram_username, user_id, payment_status)
-               VALUES ($1, $2, $3, $4, $5)
-            """, full_name, efootball_username, telegram_username, message.from_user.id, False)
-            
-        # So'rov yuborish (✅ HA / ❌ YO'Q tugmalari bilan)
+                INSERT INTO tournament_players (full_name, username, telegram_user, user_id, payment_status)
+                VALUES ($1, $2, $3, $4, $5)
+            """, full_name, username, telegram_user, message.from_user.id, False)
+        
         confirm_keyboard = InlineKeyboardMarkup(
             inline_keyboard=[
                 [
@@ -184,11 +181,8 @@ async def handle_registration(message: Message):
 # ================= CONFIRMATION HANDLERS =================
 @dp.callback_query(F.data == "confirm_yes")
 async def confirm_yes(callback: CallbackQuery):
-    """Foydalanuvchi HA ni bosdi"""
-    
     await callback.message.delete()
     
-    # To'lov ma'lumotlari (₽ muammosi hal qilingan)
     payment_text = f"""
 💳 **TO'LOV MA'LUMOTLARI**
 
@@ -206,8 +200,6 @@ Admin to'lovni tasdiqlagach, ro'yxatdan o'tgan hisoblanasiz.
 
 @dp.callback_query(F.data == "confirm_no")
 async def confirm_no(callback: CallbackQuery):
-    """Foydalanuvchi YO'Q ni bosdi"""
-    
     await callback.message.delete()
     
     cancel_msg = await callback.message.answer("❌ Ro'yxatdan o'tish bekor qilindi.")
@@ -226,8 +218,6 @@ async def confirm_no(callback: CallbackQuery):
 # ================= PAYMENT HANDLER =================
 @dp.message(F.photo)
 async def handle_payment_photo(message: Message):
-    """To'lov chekini qabul qilish"""
-    
     user_id = message.from_user.id
     
     async with db_pool.acquire() as conn:
@@ -366,7 +356,7 @@ async def show_players(message: Message):
     for row in rows:
         text += f"{row['id']}. {row['full_name']}\n"
         text += f"   ⚽ eFootball: @{row['username']}\n"
-        text += f"   📱 Telegram: @{row['telegram_username']}\n"
+        text += f"   📱 Telegram: @{row['telegram_user']}\n"
         text += f"   ✅ To'lov: tasdiqlangan\n\n"
     
     await message.answer(text, parse_mode="Markdown")
@@ -414,8 +404,9 @@ async def send_post(message: Message):
 📅 **Sana:** 2026.03.10
 ⏰ **Vaqt:** 20:00
 👥 **Ishtirokchilar:** 16 kishi
-💰 **To'lov:** {PAYMENT_AMOUNT} {RUB}
-💳 **Karta:** {CARD_NUMBER}
+💰 **To'lov:** {300} {RUB}
+💳 **Karta:** {2202 2063 4229 7533}
+👤 **Sberbank**
 
 ✅ Ro'yxatdan o'tish uchun tugmani bosing!
 ━━━━━━━━━━━━━━━━━━
@@ -459,13 +450,14 @@ async def clear_no(callback: CallbackQuery):
 @dp.message(Command("about"))
 async def about_command(message: Message):
     text = """
-🎮 **eFootball Turnir Boti** v2.0
+🎮 **eFootball Turnir Boti**
 
 🏆 Turnirga ro'yxatdan o'tish:
    /start
 
 👨‍💻 Developer: @Shukurullo
 📅 2026
+⚙️ Version 2.1
 """
     await message.answer(text, parse_mode="Markdown")
 
