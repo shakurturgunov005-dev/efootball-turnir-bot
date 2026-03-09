@@ -16,21 +16,32 @@ REGISTRATION_TEMPLATE = """
 
 @router.callback_query(F.data == "register")
 async def register_start(callback: types.CallbackQuery):
+    """Ro'yxatdan o'tishni boshlash"""
     await callback.message.answer(REGISTRATION_TEMPLATE, parse_mode="Markdown")
     await callback.answer()
 
 @router.message(F.text & ~F.text.startswith("/") & ~F.photo)
 async def handle_registration(message: types.Message):
+    """Foydalanuvchi yuborgan ma'lumotlarni qabul qilish"""
+    
+    # FAQAT ro'yxatdan o'tish shabloniga o'xshagan matnlarni ushlash
     if not ("1️⃣" in message.text and "2️⃣" in message.text and "3️⃣" in message.text):
+        # Agar shart bajarilmasa, hech narsa qilma (boshqa handler ishlaydi)
         return
-
-    lines = message.text.strip().split('\n')
+    
+    # Ro'yxatdan o'tish jarayoni
+    text = message.text.strip()
+    lines = text.split('\n')
+    
     if len(lines) < 3:
         await message.answer("❌ Noto'g'ri format. Iltimos, ko'rsatilgan shablon bo'yicha to'ldiring.")
         return
-
+    
     try:
-        full_name = username = telegram_username = ""
+        full_name = ""
+        username = ""
+        telegram_username = ""
+        
         for line in lines:
             if "1️⃣" in line and ":" in line:
                 full_name = line.split(":", 1)[-1].strip()
@@ -38,18 +49,21 @@ async def handle_registration(message: types.Message):
                 username = line.split(":", 1)[-1].strip()
             elif "3️⃣" in line and ":" in line:
                 telegram_username = line.split(":", 1)[-1].strip()
-
+        
         if not full_name or not username or not telegram_username:
             await message.answer("❌ Barcha maydonlarni to'ldiring!")
             return
-
+        
+        # Avval ro'yxatdan o'tganmi tekshirish
         existing = await db.get_player_by_user_id(message.from_user.id)
         if existing:
             await message.answer("❌ Siz avval ro'yxatdan o'tgansiz!")
             return
-
+        
+        # Yangi ishtirokchini qo'shish
         await db.add_player(full_name, username, telegram_username, message.from_user.id)
-
+        
+        # To'lovni tasdiqlash tugmalari
         confirm_keyboard = InlineKeyboardMarkup(
             inline_keyboard=[
                 [
@@ -58,9 +72,11 @@ async def handle_registration(message: types.Message):
                 ]
             ]
         )
+        
         await message.answer(
             "⚠️ To'lovni o'zingiz xohlab qilyapsizmi?\nHech kim majburlamayaptimi?",
             reply_markup=confirm_keyboard
         )
+        
     except Exception as e:
         await message.answer(f"❌ Xatolik yuz berdi: {str(e)}")
