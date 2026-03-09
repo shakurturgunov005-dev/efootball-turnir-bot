@@ -117,6 +117,13 @@ class Database:
         async with self.pool.acquire() as conn:
             return await conn.fetch("SELECT * FROM matches ORDER BY round, id")
     
+    async def get_match(self, match_id):
+        async with self.pool.acquire() as conn:
+            return await conn.fetchrow(
+                "SELECT * FROM matches WHERE id = $1",
+                match_id
+            )
+    
     async def update_standings(self, player1_id, player2_id, score1, score2):
         async with self.pool.acquire() as conn:
 
