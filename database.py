@@ -1,6 +1,7 @@
 import asyncpg
 from config import DATABASE_URL
 
+
 class Database:
     def __init__(self):
         self.pool = None
@@ -11,6 +12,7 @@ class Database:
 
     async def init_db(self):
         async with self.pool.acquire() as conn:
+
             await conn.execute("""
                 CREATE TABLE IF NOT EXISTS players (
                     id SERIAL PRIMARY KEY,
@@ -51,10 +53,12 @@ class Database:
                 )
             """)
 
+        await self.init_standings()
+
     async def add_player(self, full_name, username, telegram_username, user_id):
         async with self.pool.acquire() as conn:
             return await conn.execute("""
-                INSERT INTO players (full_name, username, telegram_username, user_id) 
+                INSERT INTO players (full_name, username, telegram_username, user_id)
                 VALUES ($1, $2, $3, $4)
             """, full_name, username, telegram_username, user_id)
 
