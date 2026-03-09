@@ -103,7 +103,20 @@ class Database:
     async def get_matches(self):
         async with self.pool.acquire() as conn:
             return await conn.fetch("SELECT * FROM matches ORDER BY round, id")
+    
+    async def init_standings(self):
+        async with self.pool.acquire() as conn:
+            players = await conn.fetch(
+                "SELECT id FROM players WHERE payment_status = TRUE"
+            )
 
+            for player in players:
+                await conn.execute("""
+                    INSERT INTO standings (player_id)
+                    VALUES ($1)
+                    ON CONFLICT (player_id) DO NOTHING
+                """, player["id"])
+                
     async def close(self):
         if self.pool:
             await self.pool.close()
