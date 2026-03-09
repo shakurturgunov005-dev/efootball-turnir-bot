@@ -122,6 +122,15 @@ async def update_score(message: types.Message):
 
         await db.update_match_score(match_id, score, winner_id)
 
+        await message.answer(
+            f"✅ Match natijasi yangilandi\n"
+            f"Score: {score}"
+        )
+
+    except Exception as e:
+        await message.answer(f"❌ Xatolik yuz berdi:\n{e}")
+
+
 @router.message(Command("standings"))
 async def show_standings(message: types.Message):
 
@@ -139,11 +148,3 @@ async def show_standings(message: types.Message):
         place += 1
 
     await message.answer(text, parse_mode="Markdown")
-
-        await message.answer(
-            f"✅ Match natijasi yangilandi\n"
-            f"Score: {score}"
-        )
-
-    except Exception as e:
-        await message.answer(f"❌ Xatolik yuz berdi:\n{e}")
