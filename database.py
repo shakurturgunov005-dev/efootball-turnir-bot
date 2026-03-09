@@ -35,6 +35,20 @@ class Database:
                     status TEXT DEFAULT 'pending'
                 )
             """)
+            
+            await conn.execute("""
+                 CREATE TABLE IF NOT EXISTS standings (
+                     player_id INTEGER PRIMARY KEY REFERENCES players(id),
+                     played INTEGER DEFAULT 0,
+                     wins INTEGER DEFAULT 0,
+                     draws INTEGER DEFAULT 0,
+                     losses INTEGER DEFAULT 0,
+                     goals_for INTEGER DEFAULT 0,
+                     goals_against INTEGER DEFAULT 0,
+                     goal_diff INTEGER DEFAULT 0,
+                     points INTEGER DEFAULT 0
+                )
+            """)
 
     async def add_player(self, full_name, username, telegram_username, user_id):
         async with self.pool.acquire() as conn:
