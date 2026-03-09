@@ -94,16 +94,67 @@ class Database:
 
     async def update_match_score(self, match_id, score, winner_id):
         async with self.pool.acquire() as conn:
-            return await conn.execute("""
-                UPDATE matches 
-                SET score = $1, winner_id = $2, status = 'completed'
-                WHERE id = $3
-            """, score, winner_id, match_id)
+        
+            match = await conn.fetchrow(
+                "SELECT player1_id, player2_id FROM matches WHERE id=$1",
+                match_id
+            )
+
+        await conn.execute("""
+            UPDATE matches
+            SET score = $1, winner_id = $2, status = 'completed'
+            WHERE id = $3
+        """, score, winner_id, match_id)
+
+    player1_id = match["player1_id"]
+    player2_id = match["player2_id"]
+
+    score1, score2 = map(int, score.split(":"))
+
+    await self.update_standings(player1_id, player2_id, score1, score2)
 
     async def get_matches(self):
         async with self.pool.acquire() as conn:
             return await conn.fetch("SELECT * FROM matches ORDER BY round, id")
     
+    async def update_standings(self, player1_id, player2_id, score1, score2):
+        async with self.pool.acquire() as conn:
+
+            # player1 statistikasi
+            await conn.execute("""
+                UPDATE standings
+                SET
+                    played = played + 1,
+                    goals_for = goals_for + $1,
+                    goals_against = goals_against + $2,
+                    goal_diff = goal_diff + ($1 - $2)
+                WHERE player_id = $3
+            """, score1, score2, player1_id)
+
+            # player2 statistikasi
+            await conn.execute("""
+                UPDATE standings
+                SET
+                    played = played + 1,
+                    goals_for = goals_for + $1,
+                    goals_against = goals_against + $2,
+                    goal_diff = goal_diff + ($1 - $2)
+                WHERE player_id = $3
+            """, score2, score1, player2_id)
+
+            # g‘alaba / durang / mag‘lubiyat
+            if score1 > score2:
+                await conn.execute("UPDATE standings SET wins = wins + 1, points = points + 3 WHERE player_id = $1", player1_id)
+                await conn.execute("UPDATE standings SET losses = losses + 1 WHERE player_id = $1", player2_id)
+
+            elif score2 > score1:
+                await conn.execute("UPDATE standings SET wins = wins + 1, points = points + 3 WHERE player_id = $1", player2_id)
+                await conn.execute("UPDATE standings SET losses = losses + 1 WHERE player_id = $1", player1_id)
+
+            else:
+                await conn.execute("UPDATE standings SET draws = draws + 1, points = points + 1 WHERE player_id = $1", player1_id)
+                await conn.execute("UPDATE standings SET draws = draws + 1, points = points + 1 WHERE player_id = $1", player2_id)
+                
     async def init_standings(self):
         async with self.pool.acquire() as conn:
             players = await conn.fetch(
