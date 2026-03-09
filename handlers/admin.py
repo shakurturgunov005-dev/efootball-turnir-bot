@@ -1,8 +1,7 @@
-8"}
-from aiogram import Router, types, F  
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton  
-from database import db  
-from config import ADMIN_IDS, MAX_PLAYERS  
+from aiogram import Router, types, F
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
+from database import db
+from config import ADMIN_IDS, MAX_PLAYERS
 import random
 
 router = Router()
@@ -17,7 +16,6 @@ async def generate_matches():
 
     async with db.pool.acquire() as conn:
         for i in range(0, len(players), 2):
-
             p1 = players[i]["user_id"]
             p2 = players[i+1]["user_id"]
 
@@ -115,8 +113,7 @@ async def check_payments(message: types.Message):
 
         await message.answer(
             f"💰 Yangi to'lov\n\n👤 {row['full_name']}\n🆔 {row['user_id']}",
-            reply_markup=keyboard,
-            parse_mode="Markdown"
+            reply_markup=keyboard
         )
 
         if row['payment_photo']:
@@ -146,8 +143,7 @@ async def confirm_payment(callback: types.CallbackQuery):
     try:
         await callback.bot.send_message(
             user_id,
-            f"✅ Tabriklaymiz!\n\nTo'lovingiz tasdiqlandi.\nSiz {count}-ishtirokchi bo'ldingiz!",
-            parse_mode="Markdown"
+            f"✅ Tabriklaymiz!\n\nTo'lovingiz tasdiqlandi.\nSiz {count}-ishtirokchi bo'ldingiz!"
         )
     except:
         pass
@@ -174,8 +170,7 @@ async def reject_payment(callback: types.CallbackQuery):
     try:
         await callback.bot.send_message(
             user_id,
-            "❌ To'lov qabul qilinmadi.\n\nIltimos qayta yuboring.",
-            parse_mode="Markdown"
+            "❌ To'lov qabul qilinmadi.\n\nIltimos qayta yuboring."
         )
     except:
         pass
@@ -214,11 +209,41 @@ async def send_post(message: types.Message):
     await message.bot.send_message(
         chat_id=CHANNEL_ID,
         text=text,
-        reply_markup=register_btn,
-        parse_mode="Markdown"
+        reply_markup=register_btn
     )
 
     await message.answer("✅ Post kanalga yuborildi!")
+
+
+@router.message(F.text == "⚽️ Match yaratish")
+async def create_matches(message: types.Message):
+
+    if message.from_user.id not in ADMIN_IDS:
+        return
+
+    players = await db.get_all_players(paid_only=True)
+
+    if len(players) < MAX_PLAYERS:
+        await message.answer(
+            f"❌ Hali yetarli o'yinchi yo'q.\n\nKerak: {MAX_PLAYERS}\nHozir: {len(players)}"
+        )
+        return
+
+    await generate_matches()
+
+    text = "🏆 1/8 FINAL JUFTLIKLARI\n\n"
+
+    async with db.pool.acquire() as conn:
+        matches = await conn.fetch("SELECT * FROM matches WHERE round='1_8'")
+
+    for i, match in enumerate(matches, 1):
+
+        p1 = await db.get_player_by_user_id(match["player1"])
+        p2 = await db.get_player_by_user_id(match["player2"])
+
+        text += f"{i}. {p1['full_name']} ⚔️ {p2['full_name']}\n"
+
+    await message.answer(text)
 
 
 @router.message(F.text == "🗑 Tozalash")
@@ -238,8 +263,7 @@ async def clear_all(message: types.Message):
 
     await message.answer(
         "⚠️ Barcha ma'lumotlarni tozalashni xohlaysizmi?",
-        reply_markup=keyboard,
-        parse_mode="Markdown"
+        reply_markup=keyboard
     )
 
 
@@ -269,4 +293,4 @@ async def clear_no(callback: types.CallbackQuery):
         return
 
     await callback.message.edit_text("❌ Bekor qilindi")
-    await callback.ans
+    await callback.answ
