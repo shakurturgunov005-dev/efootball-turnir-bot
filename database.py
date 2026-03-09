@@ -124,6 +124,17 @@ class Database:
                 match_id
             )
     
+    async def create_match(self, player1_id, player2_id):
+        async with self.pool.acquire() as conn:
+            await conn.execute(
+                """
+                INSERT INTO matches (player1_id, player2_id, status)
+                VALUES ($1, $2, 'pending')
+                """,
+                player1_id,
+                player2_id
+            )
+    
     async def update_standings(self, player1_id, player2_id, score1, score2):
         async with self.pool.acquire() as conn:
 
