@@ -5,6 +5,7 @@ from config import ADMIN_IDS, MAX_PLAYERS
 
 router = Router()
 
+
 def admin_keyboard():
     return ReplyKeyboardMarkup(
         keyboard=[
@@ -22,6 +23,7 @@ def admin_keyboard():
 
 @router.message(F.text == "📋 Ishtirokchilar")
 async def show_players(message: types.Message):
+
     if message.from_user.id not in ADMIN_IDS:
         return
 
@@ -34,13 +36,15 @@ async def show_players(message: types.Message):
     text = f"📋 **Ishtirokchilar** ({len(players)}/{MAX_PLAYERS})\n\n"
 
     for p in players:
-        text += f"{p['id']}. {p['full_name']} - @{p['username']}\n   ✅ To'lov qilingan\n\n"
+        username = f"@{p['username']}" if p['username'] else "username yo'q"
+        text += f"{p['id']}. {p['full_name']} - {username}\n   ✅ To'lov qilingan\n\n"
 
     await message.answer(text, parse_mode="Markdown")
 
 
 @router.message(F.text == "📊 Statistika")
 async def show_stats(message: types.Message):
+
     if message.from_user.id not in ADMIN_IDS:
         return
 
@@ -112,9 +116,8 @@ async def confirm_payment(callback: types.CallbackQuery):
 
     user = await db.get_player_by_user_id(user_id)
 
-    paid_count = await db.get_all_players(paid_only=True)
-
-    count = len(paid_count)
+    paid_players = await db.get_all_players(paid_only=True)
+    count = len(paid_players)
 
     try:
         await callback.bot.send_message(
@@ -126,11 +129,9 @@ async def confirm_payment(callback: types.CallbackQuery):
         pass
 
     await callback.message.edit_text(f"✅ To'lov tasdiqlandi: {user['full_name']}")
-
     await callback.answer("✅ Tasdiqlandi")
 
 
-# ❌ RAD ETISH
 @router.callback_query(F.data.startswith("reject_"))
 async def reject_payment(callback: types.CallbackQuery):
 
@@ -156,7 +157,6 @@ async def reject_payment(callback: types.CallbackQuery):
         pass
 
     await callback.message.edit_text("❌ To'lov rad etildi")
-
     await callback.answer()
 
 
@@ -222,18 +222,24 @@ async def clear_all(message: types.Message):
 @router.callback_query(F.data == "clear_yes")
 async def clear_yes(callback: types.CallbackQuery):
 
+    if callback.from_user.id not in ADMIN_IDS:
+        await callback.answer("❌ Ruxsat yo'q", show_alert=True)
+        return
+
     async with db.pool.acquire() as conn:
         await conn.execute("DELETE FROM players")
         await conn.execute("DELETE FROM matches")
 
     await callback.message.edit_text("✅ Barcha ma'lumotlar tozalandi!")
-
-    await callback.answer()
+    await callback.answer("Tozalandi")
 
 
 @router.callback_query(F.data == "clear_no")
 async def clear_no(callback: types.CallbackQuery):
 
-    await callback.message.edit_text("❌ Bekor qilindi")
+    if callback.from_user.id not in ADMIN_IDS:
+        await callback.answer()
+        return
 
+    await callback.message.edit_text("❌ Bekor qilindi")
     await callback.answer()
