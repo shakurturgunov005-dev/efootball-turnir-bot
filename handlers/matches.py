@@ -57,6 +57,7 @@ async def show_matches(message: types.Message):
 @router.message(F.text == "⚽️ Match yaratish")
 async def create_match_prompt(message: types.Message):
     from config import ADMIN_IDS
+    import random
 
     if message.from_user.id not in ADMIN_IDS:
         return
@@ -67,9 +68,15 @@ async def create_match_prompt(message: types.Message):
         await message.answer("❌ Match yaratish uchun kamida 2 ishtirokchi kerak.")
         return
 
-    await message.answer("⚽️ Match yaratish funksiyasi ishlab chiqilmoqda...")
+    player1, player2 = random.sample(players, 2)
 
+    await db.create_match(player1["id"], player2["id"])
 
+    await message.answer(
+        f"⚽️ Yangi match yaratildi!\n\n"
+        f"{player1['full_name']} vs {player2['full_name']}"
+    )
+    
 @router.message(Command("score"))
 async def update_score(message: types.Message):
     from config import ADMIN_IDS
