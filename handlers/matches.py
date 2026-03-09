@@ -66,8 +66,21 @@ async def update_score(message: types.Message):
             )
             return
         
-        winner_id = int(args[2])
-        await db.update_match_score(match_id, score, winner_id)
-        await message.answer(f"✅ Match natijasi yangilandi: {score}")
-    except Exception as e:
-        await message.answer(f"❌ Xatolik: {str(e)}")
+score1, score2 = map(int, score.split(":"))
+
+match = await db.get_match(match_id)
+
+if score1 > score2:
+    winner_id = match["player1_id"]
+elif score2 > score1:
+    winner_id = match["player2_id"]
+else:
+    await message.answer("❌ Durang bo‘lishi mumkin emas!")
+    return
+
+await db.update_match_score(match_id, score, winner_id)
+
+await message.answer(
+    f"✅ Match natijasi yangilandi\n"
+    f"Score: {score}"
+)
