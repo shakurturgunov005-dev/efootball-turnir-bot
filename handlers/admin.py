@@ -245,4 +245,4 @@ async def clear_no(callback: types.CallbackQuery):
         return
 
     await callback.message.edit_text("❌ Bekor qilindi")
-    await callback.answer(
+    await callback.answer()
