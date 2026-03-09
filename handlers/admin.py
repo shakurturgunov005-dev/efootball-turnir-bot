@@ -32,6 +32,7 @@ async def generate_matches():
             )
 
 
+# ADMIN KEYBOARD
 def admin_keyboard():
     return ReplyKeyboardMarkup(
         keyboard=[
@@ -40,13 +41,13 @@ def admin_keyboard():
             [KeyboardButton(text="📢 Post yuborish")],
             [KeyboardButton(text="💰 To'lov tekshirish")],
             [KeyboardButton(text="⚽️ Match yaratish")],
-            [KeyboardButton(text="📝 Ro'yxatni tahrirlash")],
             [KeyboardButton(text="🗑 Tozalash")]
         ],
         resize_keyboard=True
     )
 
 
+# PLAYERS LIST
 @router.message(F.text == "📋 Ishtirokchilar")
 async def show_players(message: types.Message):
 
@@ -68,6 +69,7 @@ async def show_players(message: types.Message):
     await message.answer(text)
 
 
+# STATISTICS
 @router.message(F.text == "📊 Statistika")
 async def show_stats(message: types.Message):
 
@@ -89,6 +91,7 @@ async def show_stats(message: types.Message):
     await message.answer(text)
 
 
+# PAYMENT CHECK
 @router.message(F.text == "💰 To'lov tekshirish")
 async def check_payments(message: types.Message):
 
@@ -128,6 +131,7 @@ async def check_payments(message: types.Message):
             )
 
 
+# CONFIRM PAYMENT
 @router.callback_query(F.data.startswith("confirm_"))
 async def confirm_payment(callback: types.CallbackQuery):
 
@@ -156,6 +160,7 @@ async def confirm_payment(callback: types.CallbackQuery):
     await callback.answer("✅ Tasdiqlandi")
 
 
+# REJECT PAYMENT
 @router.callback_query(F.data.startswith("reject_"))
 async def reject_payment(callback: types.CallbackQuery):
 
@@ -183,36 +188,56 @@ async def reject_payment(callback: types.CallbackQuery):
     await callback.answer()
 
 
+# TOURNAMENT POST
 @router.message(F.text == "📢 Post yuborish")
 async def send_post(message: types.Message):
 
     if message.from_user.id not in ADMIN_IDS:
         return
 
-    players = await db.get_all_players(paid_only=True)
+    players = await db.get_all_players()
+    count = len(players)
 
-    text = "━━━━━━━━━━━━━━━━━━\n📋 TURNIR RO'YXATI\n━━━━━━━━━━━━━━━━━━\n\n"
+    text = f"""
+🎮 eFootball TURNIR BOTI 🤖
 
-    for i, player in enumerate(players, 1):
-        text += f"{i}. {player['full_name']}\n"
+🏆 Professional eFootball turniriga xush kelibsiz!
 
-    text += "\n━━━━━━━━━━━━━━━━━━"
+👥 Ishtirokchilar: {count} / {MAX_PLAYERS}
 
-    register_btn = InlineKeyboardMarkup(
+ℹ️ Eslatma: turnirda ishtirok etish uchun badal miqdori 300₽ etib belgilangan.
+To'lov tasdiqlangandan so'ng ishtirokchi turnir ro'yxatiga kiritiladi.
+
+🔥 Eng kuchlilar finalga chiqadi!
+"""
+
+    if count == MAX_PLAYERS - 1:
+        text += "\n\n⚠️ Oxirgi joy qoldi!"
+
+    if count >= MAX_PLAYERS:
+        text += "\n\n❌ Ro'yxatdan o'tish yopildi!"
+
+    keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="📝 Turnirga ro'yxatdan o'tish", callback_data="register")]
+            [
+                InlineKeyboardButton(
+                    text="⚽️ Turnirga qatnashish",
+                    callback_data="register"
+                )
+            ]
         ]
     )
 
     await message.bot.send_message(
         chat_id=CHANNEL_ID,
         text=text,
-        reply_markup=register_btn
+        reply_markup=keyboard
     )
 
-    await message.answer("✅ Post kanalga yuborildi!")
+    await message.answer("✅ Turnir posti kanalga yuborildi!")
 
 
+# CREATE MATCHES
 @router.message(F.text == "⚽️ Match yaratish")
 async def create_matches(message: types.Message):
 
@@ -243,13 +268,13 @@ async def create_matches(message: types.Message):
 
     await message.answer(text)
 
-    # KANALGA HAM YUBORISH
     await message.bot.send_message(
         CHANNEL_ID,
         text
     )
 
 
+# CLEAR DATABASE
 @router.message(F.text == "🗑 Tozalash")
 async def clear_all(message: types.Message):
 
