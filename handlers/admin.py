@@ -1,9 +1,33 @@
+8"}
 from aiogram import Router, types, F  
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton  
 from database import db  
 from config import ADMIN_IDS, MAX_PLAYERS  
+import random
 
 router = Router()
+
+
+# MATCH GENERATOR
+async def generate_matches():
+    players = await db.get_all_players(paid_only=True)
+
+    players = list(players)
+    random.shuffle(players)
+
+    async with db.pool.acquire() as conn:
+        for i in range(0, len(players), 2):
+
+            p1 = players[i]["user_id"]
+            p2 = players[i+1]["user_id"]
+
+            await conn.execute(
+                """
+                INSERT INTO matches (player1, player2, round)
+                VALUES ($1,$2,$3)
+                """,
+                p1, p2, "1_8"
+            )
 
 
 def admin_keyboard():
@@ -245,4 +269,4 @@ async def clear_no(callback: types.CallbackQuery):
         return
 
     await callback.message.edit_text("❌ Bekor qilindi")
-    await callback.answer()
+    await callback.ans
