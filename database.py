@@ -23,6 +23,7 @@ class Database:
                     registered_at TIMESTAMP DEFAULT NOW()
                 )
             """)
+
             await conn.execute("""
                 CREATE TABLE IF NOT EXISTS matches (
                     id SERIAL PRIMARY KEY,
@@ -35,18 +36,18 @@ class Database:
                     status TEXT DEFAULT 'pending'
                 )
             """)
-            
+
             await conn.execute("""
-                 CREATE TABLE IF NOT EXISTS standings (
-                     player_id INTEGER PRIMARY KEY REFERENCES players(id),
-                     played INTEGER DEFAULT 0,
-                     wins INTEGER DEFAULT 0,
-                     draws INTEGER DEFAULT 0,
-                     losses INTEGER DEFAULT 0,
-                     goals_for INTEGER DEFAULT 0,
-                     goals_against INTEGER DEFAULT 0,
-                     goal_diff INTEGER DEFAULT 0,
-                     points INTEGER DEFAULT 0
+                CREATE TABLE IF NOT EXISTS standings (
+                    player_id INTEGER PRIMARY KEY REFERENCES players(id),
+                    played INTEGER DEFAULT 0,
+                    wins INTEGER DEFAULT 0,
+                    draws INTEGER DEFAULT 0,
+                    losses INTEGER DEFAULT 0,
+                    goals_for INTEGER DEFAULT 0,
+                    goals_against INTEGER DEFAULT 0,
+                    goal_diff INTEGER DEFAULT 0,
+                    points INTEGER DEFAULT 0
                 )
             """)
 
@@ -59,86 +60,94 @@ class Database:
 
     async def get_player_by_user_id(self, user_id):
         async with self.pool.acquire() as conn:
-            return await conn.fetchrow("SELECT * FROM players WHERE user_id = $1", user_id)
+            return await conn.fetchrow(
+                "SELECT * FROM players WHERE user_id = $1", user_id
+            )
 
     async def get_all_players(self, paid_only=False):
         async with self.pool.acquire() as conn:
             if paid_only:
-                return await conn.fetch("SELECT * FROM players WHERE payment_status = TRUE ORDER BY id")
+                return await conn.fetch(
+                    "SELECT * FROM players WHERE payment_status = TRUE ORDER BY id"
+                )
             return await conn.fetch("SELECT * FROM players ORDER BY id")
 
     async def update_payment_status(self, user_id, photo_id=None):
         async with self.pool.acquire() as conn:
             if photo_id:
-                await conn.execute("UPDATE players SET payment_photo = $1 WHERE user_id = $2", photo_id, user_id)
+                await conn.execute(
+                    "UPDATE players SET payment_photo = $1 WHERE user_id = $2",
+                    photo_id, user_id
+                )
             else:
-                await conn.execute("UPDATE players SET payment_status = TRUE WHERE user_id = $1", user_id)
+                await conn.execute(
+                    "UPDATE players SET payment_status = TRUE WHERE user_id = $1",
+                    user_id
+                )
 
     async def delete_player(self, user_id):
         async with self.pool.acquire() as conn:
-            await conn.execute("DELETE FROM players WHERE user_id = $1", user_id)
+            await conn.execute(
+                "DELETE FROM players WHERE user_id = $1",
+                user_id
+            )
 
     async def get_statistics(self):
         async with self.pool.acquire() as conn:
             total = await conn.fetchval("SELECT COUNT(*) FROM players")
-            paid = await conn.fetchval("SELECT COUNT(*) FROM players WHERE payment_status = TRUE")
-            waiting = await conn.fetchval("SELECT COUNT(*) FROM players WHERE payment_status = FALSE AND payment_photo IS NOT NULL")
+            paid = await conn.fetchval(
+                "SELECT COUNT(*) FROM players WHERE payment_status = TRUE"
+            )
+            waiting = await conn.fetchval("""
+                SELECT COUNT(*) FROM players
+                WHERE payment_status = FALSE AND payment_photo IS NOT NULL
+            """)
             return total, paid, waiting
 
-    async def create_match(self, player1_id, player2_id, round_num, match_time):
+    async def create_match(self, player1_id, player2_id):
         async with self.pool.acquire() as conn:
-            return await conn.execute("""
-                INSERT INTO matches (player1_id, player2_id, round, match_time)
-                VALUES ($1, $2, $3, $4)
-            """, player1_id, player2_id, round_num, match_time)
-
-    async def update_match_score(self, match_id, score, winner_id):
-        async with self.pool.acquire() as conn:
-        
-            match = await conn.fetchrow(
-                "SELECT player1_id, player2_id FROM matches WHERE id=$1",
-                match_id
-            )
-
-        await conn.execute("""
-            UPDATE matches
-            SET score = $1, winner_id = $2, status = 'completed'
-            WHERE id = $3
-        """, score, winner_id, match_id)
-
-    player1_id = match["player1_id"]
-    player2_id = match["player2_id"]
-
-    score1, score2 = map(int, score.split(":"))
-
-    await self.update_standings(player1_id, player2_id, score1, score2)
+            await conn.execute("""
+                INSERT INTO matches (player1_id, player2_id, status)
+                VALUES ($1, $2, 'pending')
+            """, player1_id, player2_id)
 
     async def get_matches(self):
         async with self.pool.acquire() as conn:
-            return await conn.fetch("SELECT * FROM matches ORDER BY round, id")
-    
+            return await conn.fetch(
+                "SELECT * FROM matches ORDER BY round, id"
+            )
+
     async def get_match(self, match_id):
         async with self.pool.acquire() as conn:
             return await conn.fetchrow(
                 "SELECT * FROM matches WHERE id = $1",
                 match_id
             )
-    
-    async def create_match(self, player1_id, player2_id):
+
+    async def update_match_score(self, match_id, score, winner_id):
         async with self.pool.acquire() as conn:
-            await conn.execute(
-                """
-                INSERT INTO matches (player1_id, player2_id, status)
-                VALUES ($1, $2, 'pending')
-                """,
-                player1_id,
-                player2_id
+
+            match = await conn.fetchrow(
+                "SELECT player1_id, player2_id FROM matches WHERE id=$1",
+                match_id
             )
-    
+
+            await conn.execute("""
+                UPDATE matches
+                SET score = $1, winner_id = $2, status = 'completed'
+                WHERE id = $3
+            """, score, winner_id, match_id)
+
+        player1_id = match["player1_id"]
+        player2_id = match["player2_id"]
+
+        score1, score2 = map(int, score.split(":"))
+
+        await self.update_standings(player1_id, player2_id, score1, score2)
+
     async def update_standings(self, player1_id, player2_id, score1, score2):
         async with self.pool.acquire() as conn:
 
-            # player1 statistikasi
             await conn.execute("""
                 UPDATE standings
                 SET
@@ -149,7 +158,6 @@ class Database:
                 WHERE player_id = $3
             """, score1, score2, player1_id)
 
-            # player2 statistikasi
             await conn.execute("""
                 UPDATE standings
                 SET
@@ -160,19 +168,36 @@ class Database:
                 WHERE player_id = $3
             """, score2, score1, player2_id)
 
-            # g‘alaba / durang / mag‘lubiyat
             if score1 > score2:
-                await conn.execute("UPDATE standings SET wins = wins + 1, points = points + 3 WHERE player_id = $1", player1_id)
-                await conn.execute("UPDATE standings SET losses = losses + 1 WHERE player_id = $1", player2_id)
+                await conn.execute(
+                    "UPDATE standings SET wins = wins + 1, points = points + 3 WHERE player_id = $1",
+                    player1_id
+                )
+                await conn.execute(
+                    "UPDATE standings SET losses = losses + 1 WHERE player_id = $1",
+                    player2_id
+                )
 
             elif score2 > score1:
-                await conn.execute("UPDATE standings SET wins = wins + 1, points = points + 3 WHERE player_id = $1", player2_id)
-                await conn.execute("UPDATE standings SET losses = losses + 1 WHERE player_id = $1", player1_id)
+                await conn.execute(
+                    "UPDATE standings SET wins = wins + 1, points = points + 3 WHERE player_id = $1",
+                    player2_id
+                )
+                await conn.execute(
+                    "UPDATE standings SET losses = losses + 1 WHERE player_id = $1",
+                    player1_id
+                )
 
             else:
-                await conn.execute("UPDATE standings SET draws = draws + 1, points = points + 1 WHERE player_id = $1", player1_id)
-                await conn.execute("UPDATE standings SET draws = draws + 1, points = points + 1 WHERE player_id = $1", player2_id)
-                
+                await conn.execute(
+                    "UPDATE standings SET draws = draws + 1, points = points + 1 WHERE player_id = $1",
+                    player1_id
+                )
+                await conn.execute(
+                    "UPDATE standings SET draws = draws + 1, points = points + 1 WHERE player_id = $1",
+                    player2_id
+                )
+
     async def init_standings(self):
         async with self.pool.acquire() as conn:
             players = await conn.fetch(
@@ -185,21 +210,40 @@ class Database:
                     VALUES ($1)
                     ON CONFLICT (player_id) DO NOTHING
                 """, player["id"])
-    
+
     async def get_matches_with_players(self):
         async with self.pool.acquire() as conn:
             return await conn.fetch("""
                 SELECT 
                     m.id,
-                    p1.name AS player1,
-                    p2.name AS player2
+                    p1.full_name AS player1,
+                    p2.full_name AS player2
                 FROM matches m
-                JOIN players p1 ON m.player1_id = p1.user_id
-                JOIN players p2 ON m.player2_id = p2.user_id
+                JOIN players p1 ON m.player1_id = p1.id
+                JOIN players p2 ON m.player2_id = p2.id
             """)
-    
+
+    async def get_standings(self):
+        async with self.pool.acquire() as conn:
+            return await conn.fetch("""
+                SELECT 
+                    p.full_name,
+                    s.played,
+                    s.wins,
+                    s.draws,
+                    s.losses,
+                    s.goals_for,
+                    s.goals_against,
+                    s.goal_diff,
+                    s.points
+                FROM standings s
+                JOIN players p ON p.id = s.player_id
+                ORDER BY s.points DESC, s.goal_diff DESC
+            """)
+
     async def close(self):
         if self.pool:
             await self.pool.close()
 
-    db = Database()
+
+db = Database()
