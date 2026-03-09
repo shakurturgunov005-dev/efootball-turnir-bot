@@ -122,6 +122,24 @@ async def update_score(message: types.Message):
 
         await db.update_match_score(match_id, score, winner_id)
 
+@router.message(Command("standings"))
+async def show_standings(message: types.Message):
+
+    standings = await db.get_standings()
+
+    if not standings:
+        await message.answer("❌ Jadval hali shakllanmagan.")
+        return
+
+    text = "🏆 *TURNIR JADVALI*\n\n"
+
+    place = 1
+    for player in standings:
+        text += f"{place}️⃣ {player['full_name']} — {player['points']} ochko\n"
+        place += 1
+
+    await message.answer(text, parse_mode="Markdown")
+
         await message.answer(
             f"✅ Match natijasi yangilandi\n"
             f"Score: {score}"
