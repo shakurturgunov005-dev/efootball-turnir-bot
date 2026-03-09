@@ -32,7 +32,7 @@ async def show_matches(message: types.Message):
     players = await db.get_all_players(paid_only=True)
     player_dict = {p["id"]: p["full_name"] for p in players}
 
-    text = "⚽️ **MATCHLAR**\n\n"
+    text = "⚽️ *MATCHLAR*\n\n"
 
     for match in matches:
         p1 = player_dict.get(match["player1_id"], "Noma'lum")
@@ -49,7 +49,7 @@ async def show_matches(message: types.Message):
         status = "✅" if match["status"] == "completed" else "⏳"
 
         text += f"{status} {p1} vs {p2}\n"
-        text += f"   🕐 {match_time} | {score}\n\n"
+        text += f"🕐 {match_time} | {score}\n\n"
 
     await message.answer(text, parse_mode="Markdown")
 
@@ -76,7 +76,8 @@ async def create_match_prompt(message: types.Message):
         f"⚽️ Yangi match yaratildi!\n\n"
         f"{player1['full_name']} vs {player2['full_name']}"
     )
-    
+
+
 @router.message(Command("score"))
 async def update_score(message: types.Message):
     from config import ADMIN_IDS
@@ -95,7 +96,6 @@ async def update_score(message: types.Message):
         match_id = int(args[0])
         score = args[1]
 
-        # Score format tekshirish
         if not re.match(r"^\d+:\d+$", score):
             await message.answer(
                 "❌ Score noto‘g‘ri formatda!\n\n"
@@ -112,7 +112,6 @@ async def update_score(message: types.Message):
             await message.answer("❌ Match topilmadi.")
             return
 
-        # G‘olibni aniqlash
         if score1 > score2:
             winner_id = match["player1_id"]
         elif score2 > score1:
@@ -130,19 +129,3 @@ async def update_score(message: types.Message):
 
     except Exception as e:
         await message.answer(f"❌ Xatolik yuz berdi:\n{e}")
-        
-@router.message(Command("matches"))
-async def show_matches(message: types.Message):
-
-    matches = await db.get_matches_with_players()
-
-    if not matches:
-        await message.answer("❌ Hali matchlar yo‘q.")
-        return
-
-    text = "⚽ Matchlar ro‘yxati:\n\n"
-
-    for m in matches:
-        text += f"{m['id']}️⃣ {m['player1']} vs {m['player2']}\n"
-
-    await message.answer(text)
