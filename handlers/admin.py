@@ -1,7 +1,7 @@
-from aiogram import Router, types, F
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
-from database import db
-from config import ADMIN_IDS, MAX_PLAYERS
+from aiogram import Router, types, F  
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton  
+from database import db  
+from config import ADMIN_IDS, MAX_PLAYERS  
 
 router = Router()
 
@@ -33,7 +33,7 @@ async def show_players(message: types.Message):
         await message.answer("📭 Hali ishtirokchilar yo'q.")
         return
 
-    text = f"📋 **Ishtirokchilar** ({len(players)}/{MAX_PLAYERS})\n\n"
+    text = f"📋 Ishtirokchilar ({len(players)}/{MAX_PLAYERS})\n\n"
 
     for p in players:
         username = f"@{p['username']}" if p['username'] else "username yo'q"
@@ -51,7 +51,7 @@ async def show_stats(message: types.Message):
     total, paid, waiting = await db.get_statistics()
 
     text = f"""
-📊 **STATISTIKA**
+📊 STATISTIKA
 ━━━━━━━━━━━━━━━━━━
 👥 Jami ro'yxatdan o'tgan: {total}
 ✅ To'lov qilgan: {paid}
@@ -90,7 +90,7 @@ async def check_payments(message: types.Message):
         )
 
         await message.answer(
-            f"💰 **Yangi to'lov**\n\n👤 {row['full_name']}\n🆔 {row['user_id']}",
+            f"💰 Yangi to'lov\n\n👤 {row['full_name']}\n🆔 {row['user_id']}",
             reply_markup=keyboard,
             parse_mode="Markdown"
         )
@@ -122,7 +122,7 @@ async def confirm_payment(callback: types.CallbackQuery):
     try:
         await callback.bot.send_message(
             user_id,
-            f"✅ **Tabriklaymiz!**\n\nTo'lovingiz tasdiqlandi.\nSiz {count}-ishtirokchi bo'ldingiz!",
+            f"✅ Tabriklaymiz!\n\nTo'lovingiz tasdiqlandi.\nSiz {count}-ishtirokchi bo'ldingiz!",
             parse_mode="Markdown"
         )
     except:
@@ -150,7 +150,7 @@ async def reject_payment(callback: types.CallbackQuery):
     try:
         await callback.bot.send_message(
             user_id,
-            "❌ **To'lov qabul qilinmadi.**\n\nIltimos qayta yuboring.",
+            "❌ To'lov qabul qilinmadi.\n\nIltimos qayta yuboring.",
             parse_mode="Markdown"
         )
     except:
@@ -172,7 +172,7 @@ async def send_post(message: types.Message):
         await message.answer("📭 Hali ishtirokchilar yo'q.")
         return
 
-    text = "━━━━━━━━━━━━━━━━━━\n📋 **TURNIR RO'YXATI**\n━━━━━━━━━━━━━━━━━━\n\n"
+    text = "━━━━━━━━━━━━━━━━━━\n📋 TURNIR RO'YXATI\n━━━━━━━━━━━━━━━━━━\n\n"
 
     for i, player in enumerate(players, 1):
         text += f"{i}. {player['full_name']}\n"
@@ -213,7 +213,7 @@ async def clear_all(message: types.Message):
     )
 
     await message.answer(
-        "⚠️ **Barcha ma'lumotlarni tozalashni xohlaysizmi?**",
+        "⚠️ Barcha ma'lumotlarni tozalashni xohlaysizmi?",
         reply_markup=keyboard,
         parse_mode="Markdown"
     )
@@ -226,12 +226,15 @@ async def clear_yes(callback: types.CallbackQuery):
         await callback.answer("❌ Ruxsat yo'q", show_alert=True)
         return
 
-    async with db.pool.acquire() as conn:
-        await conn.execute("DELETE FROM players")
-        await conn.execute("DELETE FROM matches")
+    await callback.answer("🧹 Ma'lumotlar tozalanmoqda...")
 
-    await callback.message.edit_text("✅ Barcha ma'lumotlar tozalandi!")
-    await callback.answer("Tozalandi")
+    async with db.pool.acquire() as conn:
+        await conn.execute("""
+        TRUNCATE players, matches
+        RESTART IDENTITY CASCADE
+        """)
+
+    await callback.message.edit_text("✅ Barcha ma'lumotlar 1 sekundda tozalandi!")
 
 
 @router.callback_query(F.data == "clear_no")
@@ -242,4 +245,4 @@ async def clear_no(callback: types.CallbackQuery):
         return
 
     await callback.message.edit_text("❌ Bekor qilindi")
-    await callback.answer()
+    await callback.answer(
