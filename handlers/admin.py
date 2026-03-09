@@ -1,7 +1,7 @@
 from aiogram import Router, types, F
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 from database import db
-from config import ADMIN_IDS, MAX_PLAYERS
+from config import ADMIN_IDS, MAX_PLAYERS, CHANNEL_ID
 import random
 
 router = Router()
@@ -16,8 +16,12 @@ async def generate_matches():
 
     async with db.pool.acquire() as conn:
         for i in range(0, len(players), 2):
+
+            if i + 1 >= len(players):
+                break
+
             p1 = players[i]["user_id"]
-            p2 = players[i+1]["user_id"]
+            p2 = players[i + 1]["user_id"]
 
             await conn.execute(
                 """
@@ -61,7 +65,7 @@ async def show_players(message: types.Message):
         username = f"@{p['username']}" if p['username'] else "username yo'q"
         text += f"{p['id']}. {p['full_name']} - {username}\n   ✅ To'lov qilingan\n\n"
 
-    await message.answer(text, parse_mode="Markdown")
+    await message.answer(text)
 
 
 @router.message(F.text == "📊 Statistika")
@@ -82,7 +86,7 @@ async def show_stats(message: types.Message):
 ━━━━━━━━━━━━━━━━━━
 """
 
-    await message.answer(text, parse_mode="Markdown")
+    await message.answer(text)
 
 
 @router.message(F.text == "💰 To'lov tekshirish")
@@ -187,10 +191,6 @@ async def send_post(message: types.Message):
 
     players = await db.get_all_players(paid_only=True)
 
-    if not players:
-        await message.answer("📭 Hali ishtirokchilar yo'q.")
-        return
-
     text = "━━━━━━━━━━━━━━━━━━\n📋 TURNIR RO'YXATI\n━━━━━━━━━━━━━━━━━━\n\n"
 
     for i, player in enumerate(players, 1):
@@ -203,8 +203,6 @@ async def send_post(message: types.Message):
             [InlineKeyboardButton(text="📝 Turnirga ro'yxatdan o'tish", callback_data="register")]
         ]
     )
-
-    from config import CHANNEL_ID
 
     await message.bot.send_message(
         chat_id=CHANNEL_ID,
@@ -245,6 +243,12 @@ async def create_matches(message: types.Message):
 
     await message.answer(text)
 
+    # KANALGA HAM YUBORISH
+    await message.bot.send_message(
+        CHANNEL_ID,
+        text
+    )
+
 
 @router.message(F.text == "🗑 Tozalash")
 async def clear_all(message: types.Message):
@@ -282,7 +286,7 @@ async def clear_yes(callback: types.CallbackQuery):
         RESTART IDENTITY CASCADE
         """)
 
-    await callback.message.edit_text("✅ Barcha ma'lumotlar 1 sekundda tozalandi!")
+    await callback.message.edit_text("✅ Barcha ma'lumotlar tozalandi!")
 
 
 @router.callback_query(F.data == "clear_no")
@@ -293,4 +297,4 @@ async def clear_no(callback: types.CallbackQuery):
         return
 
     await callback.message.edit_text("❌ Bekor qilindi")
-    await callback.answ
+    await callback.answer()
