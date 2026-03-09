@@ -131,18 +131,18 @@ async def update_score(message: types.Message):
     except Exception as e:
         await message.answer(f"❌ Xatolik yuz berdi:\n{e}")
         
-    @router.message(Command("matches"))
-    async def show_matches(message: types.Message):
+@router.message(Command("matches"))
+async def show_matches(message: types.Message):
 
-        matches = await db.get_matches()
+    matches = await db.get_matches_with_players()
 
-        if not matches:
-            await message.answer("❌ Hali matchlar yo‘q.")
-            return
+    if not matches:
+        await message.answer("❌ Hali matchlar yo‘q.")
+        return
 
-        text = "⚽ Matchlar ro‘yxati:\n\n"
+    text = "⚽ Matchlar ro‘yxati:\n\n"
 
-        for m in matches:
-            text += f"{m['id']}️⃣ {m['player1_id']} vs {m['player2_id']}\n"
+    for m in matches:
+        text += f"{m['id']}️⃣ {m['player1']} vs {m['player2']}\n"
 
-        await message.answer(text)
+    await message.answer(text)
