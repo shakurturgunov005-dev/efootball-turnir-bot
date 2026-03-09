@@ -185,9 +185,21 @@ class Database:
                     VALUES ($1)
                     ON CONFLICT (player_id) DO NOTHING
                 """, player["id"])
-                
+    
+    async def get_matches_with_players(self):
+        async with self.pool.acquire() as conn:
+            return await conn.fetch("""
+                SELECT 
+                    m.id,
+                    p1.name AS player1,
+                    p2.name AS player2
+                FROM matches m
+                JOIN players p1 ON m.player1_id = p1.user_id
+                JOIN players p2 ON m.player2_id = p2.user_id
+            """)
+    
     async def close(self):
         if self.pool:
             await self.pool.close()
 
-db = Database()
+    db = Database()
