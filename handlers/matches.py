@@ -56,6 +56,16 @@ async def update_score(message: types.Message):
     try:
         match_id = int(args[0])
         score = args[1]
+        
+        import re
+        if not re.match(r'^\d+:\d+$', score):
+            await message.answer(
+                "❌ Score noto‘g‘ri formatda!\n\n"
+                "To‘g‘ri format:\n"
+                "5:3"
+            )
+            return
+        
         winner_id = int(args[2])
         await db.update_match_score(match_id, score, winner_id)
         await message.answer(f"✅ Match natijasi yangilandi: {score}")
