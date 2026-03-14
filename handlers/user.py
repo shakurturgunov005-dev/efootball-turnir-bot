@@ -74,8 +74,9 @@ def main_menu(user_id, players_count):
 @router.message(CommandStart())
 async def start(message: types.Message):
 
-    players = await db.get_all_players(paid_only=True)
+    await message.answer(f"Sizning ID: {message.from_user.id}")
 
+    players = await db.get_all_players(paid_only=True)
     players_count = len(players)
 
     text = """
