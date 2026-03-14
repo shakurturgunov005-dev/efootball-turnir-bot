@@ -50,7 +50,7 @@ def admin_menu():
 @router.callback_query(F.data == "admin_panel")
 async def admin_panel(callback: types.CallbackQuery):
 
-    if callback.from_user.id not in ADMIN_IDS:
+    if int(callback.from_user.id) not in [int(admin) for admin in ADMIN_IDS]:
         return
 
     await callback.message.edit_text(
@@ -65,6 +65,9 @@ async def admin_panel(callback: types.CallbackQuery):
 
 @router.callback_query(F.data == "admin_stats")
 async def admin_stats(callback: types.CallbackQuery):
+
+    if int(callback.from_user.id) not in [int(admin) for admin in ADMIN_IDS]:
+        return
 
     total, paid, waiting = await db.get_statistics()
 
@@ -99,6 +102,9 @@ async def admin_stats(callback: types.CallbackQuery):
 
 @router.callback_query(F.data == "admin_players")
 async def admin_players(callback: types.CallbackQuery):
+
+    if int(callback.from_user.id) not in [int(admin) for admin in ADMIN_IDS]:
+        return
 
     players = await db.get_all_players(paid_only=True)
 
@@ -145,6 +151,9 @@ async def admin_players(callback: types.CallbackQuery):
 
 @router.callback_query(F.data.startswith("delete_"))
 async def delete_player(callback: types.CallbackQuery):
+
+    if int(callback.from_user.id) not in [int(admin) for admin in ADMIN_IDS]:
+        return
 
     user_id = int(callback.data.split("_")[1])
 
