@@ -33,6 +33,13 @@ def admin_menu():
                     callback_data="admin_stats"
                 )
             ],
+            
+            [
+                InlineKeyboardButton(
+                    text="🧹 Turnirni tozalash",
+                    callback_data="clear_tournament"
+                )
+            ],
 
             [
                 InlineKeyboardButton(
