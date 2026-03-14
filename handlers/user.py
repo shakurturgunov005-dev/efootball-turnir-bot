@@ -1,4 +1,4 @@
-from aiogram import Router, types
+from aiogram import Router, types, F
 from aiogram.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from database import db
@@ -46,3 +46,44 @@ Quyidagi menyudan foydalaning 👇
         text,
         reply_markup=main_menu()
     )
+
+
+# ================= PLAYERS =================
+
+@router.callback_query(F.data == "players")
+async def players(callback: types.CallbackQuery):
+
+    players = await db.get_all_players(paid_only=True)
+
+    if not players:
+
+        text = "❌ Hali tasdiqlangan ishtirokchilar yo'q."
+
+        await callback.message.edit_text(
+            text,
+            reply_markup=main_menu()
+        )
+
+        return
+
+    text = "👥 ISHTIROKCHILAR\n\n"
+
+    for i, p in enumerate(players, 1):
+
+        tg = f"https://t.me/{p['telegram_username']}"
+
+        text += f"""
+№ {i}
+
+1️⃣ Ismi: {p['full_name']}
+2️⃣ eFootball username: {p['username']}
+3️⃣ Telegram: {tg}
+
+"""
+
+    await callback.message.edit_text(
+        text,
+        reply_markup=main_menu()
+    )
+
+    await callback.answer()
