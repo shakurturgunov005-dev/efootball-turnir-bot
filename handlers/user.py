@@ -44,13 +44,27 @@ def main_menu(user_id, players_count):
         ]
     ]
 
-    # Admin tekshirish (mustahkam variant)
-    if int(user_id) in [int(admin) for admin in ADMIN_IDS]:
+    # ADMIN TEKSHIRISH
+    if int(user_id) in ADMIN_IDS:
 
         keyboard.append([
             InlineKeyboardButton(
-                text="👑 Admin panel",
-                callback_data="admin_panel"
+                text="⏳ Tasdiqlanishi kutilayotganlar",
+                callback_data="pending_payments"
+            )
+        ])
+
+        keyboard.append([
+            InlineKeyboardButton(
+                text="👥 Ishtirokchilarni boshqarish",
+                callback_data="admin_players"
+            )
+        ])
+
+        keyboard.append([
+            InlineKeyboardButton(
+                text="📊 Statistika",
+                callback_data="admin_stats"
             )
         ])
 
