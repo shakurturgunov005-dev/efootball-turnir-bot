@@ -33,7 +33,7 @@ async def generate_matches():
             )
 
 
-# INLINE ADMIN MENU
+# ADMIN MENU
 def admin_menu():
     return InlineKeyboardMarkup(
         inline_keyboard=[
@@ -54,13 +54,10 @@ async def admin_panel(message: types.Message):
     if message.from_user.id not in ADMIN_IDS:
         return
 
-    await message.answer(
-        "👑 ADMIN PANEL",
-        reply_markup=admin_menu()
-    )
+    await message.answer("👑 ADMIN PANEL", reply_markup=admin_menu())
 
 
-# PLAYERS LIST
+# PLAYERS
 @router.callback_query(F.data == "admin_players")
 async def show_players(callback: types.CallbackQuery):
 
@@ -68,6 +65,7 @@ async def show_players(callback: types.CallbackQuery):
 
     if not players:
         await callback.message.edit_text("📭 Hali ishtirokchilar yo'q.", reply_markup=admin_menu())
+        await callback.answer()
         return
 
     text = f"📋 Ishtirokchilar ({len(players)}/{MAX_PLAYERS})\n\n"
@@ -77,6 +75,7 @@ async def show_players(callback: types.CallbackQuery):
         text += f"{p['id']}. {p['full_name']} - {username}\n   ✅ To'lov qilingan\n\n"
 
     await callback.message.edit_text(text, reply_markup=admin_menu())
+    await callback.answer()
 
 
 # STATISTICS
@@ -96,6 +95,7 @@ async def show_stats(callback: types.CallbackQuery):
 """
 
     await callback.message.edit_text(text, reply_markup=admin_menu())
+    await callback.answer()
 
 
 # PAYMENT CHECK
@@ -109,6 +109,7 @@ async def check_payments(callback: types.CallbackQuery):
 
     if not rows:
         await callback.message.edit_text("📭 Tekshirilmagan to'lovlar yo'q.", reply_markup=admin_menu())
+        await callback.answer()
         return
 
     await callback.message.edit_text("💰 Tekshirilayotgan to'lovlar...", reply_markup=admin_menu())
@@ -136,6 +137,8 @@ async def check_payments(callback: types.CallbackQuery):
                 caption="📸 To'lov cheki"
             )
 
+    await callback.answer()
+
 
 # POST
 @router.callback_query(F.data == "admin_post")
@@ -151,10 +154,7 @@ async def send_post(callback: types.CallbackQuery):
 
 👥 Ishtirokchilar: {count} / {MAX_PLAYERS}
 
-ℹ️ Eslatma: turnirda ishtirok etish uchun badal miqdori 300₽ etib belgilangan.
-To'lov tasdiqlangandan so'ng ishtirokchi turnir ro'yxatiga kiritiladi.
-
-🔥 Eng kuchlilar finalga chiqadi!
+ℹ️ Badal: 300₽
 """
 
     if count == MAX_PLAYERS - 1:
@@ -178,7 +178,7 @@ To'lov tasdiqlangandan so'ng ishtirokchi turnir ro'yxatiga kiritiladi.
     await callback.answer("Post yuborildi")
 
 
-# CREATE MATCHES
+# MATCH GENERATE
 @router.callback_query(F.data == "admin_match")
 async def create_matches(callback: types.CallbackQuery):
 
@@ -205,6 +205,8 @@ async def create_matches(callback: types.CallbackQuery):
     await callback.message.answer(text)
     await callback.bot.send_message(CHANNEL_ID, text)
 
+    await callback.answer()
+
 
 # CLEAR DATABASE
 @router.callback_query(F.data == "admin_clear")
@@ -224,6 +226,8 @@ async def clear_all(callback: types.CallbackQuery):
         reply_markup=keyboard
     )
 
+    await callback.answer()
+
 
 @router.callback_query(F.data == "clear_yes")
 async def clear_yes(callback: types.CallbackQuery):
@@ -235,9 +239,11 @@ async def clear_yes(callback: types.CallbackQuery):
         """)
 
     await callback.message.edit_text("✅ Barcha ma'lumotlar tozalandi!")
+    await callback.answer()
 
 
 @router.callback_query(F.data == "clear_no")
 async def clear_no(callback: types.CallbackQuery):
 
     await callback.message.edit_text("❌ Bekor qilindi")
+    await callback.answer()
