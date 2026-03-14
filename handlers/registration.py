@@ -4,78 +4,89 @@ from database import db
 
 router = Router()
 
+
 REGISTRATION_TEMPLATE = """
 📝 **TURNIRGA RO'YXATDAN O'TISH**
 
-1️⃣ Ismingiz : 
-2️⃣ eFootball username : 
-3️⃣ Telegram username : 
+1️⃣ Ismingiz :
+2️⃣ eFootball username :
+3️⃣ Telegram username :
 
 📌 To'ldirib, shu botga qayta yuboring.
 """
 
+
 @router.callback_query(F.data == "register")
 async def register_start(callback: types.CallbackQuery):
-    """Ro'yxatdan o'tishni boshlash"""
-    await callback.message.answer(REGISTRATION_TEMPLATE, parse_mode="Markdown")
+
+    await callback.message.answer(
+        REGISTRATION_TEMPLATE,
+        parse_mode="Markdown"
+    )
+
     await callback.answer()
 
 
-# FAqat ro'yxatdan o'tish formatini ushlaydi
 @router.message(
     F.text.contains("1️⃣") &
     F.text.contains("2️⃣") &
     F.text.contains("3️⃣")
 )
 async def handle_registration(message: types.Message):
-    """Foydalanuvchi yuborgan ma'lumotlarni qabul qilish"""
 
     text = message.text.strip()
     lines = text.split('\n')
 
     if len(lines) < 3:
-        await message.answer("❌ Noto'g'ri format. Iltimos, ko'rsatilgan shablon bo'yicha to'ldiring.")
+        await message.answer(
+            "❌ Noto'g'ri format. Shablon bo'yicha to'ldiring."
+        )
         return
 
-    try:
-        full_name = ""
-        username = ""
-        telegram_username = ""
+    full_name = ""
+    username = ""
+    telegram_username = ""
 
-        for line in lines:
-            if "1️⃣" in line and ":" in line:
-                full_name = line.split(":", 1)[-1].strip()
-            elif "2️⃣" in line and ":" in line:
-                username = line.split(":", 1)[-1].strip()
-            elif "3️⃣" in line and ":" in line:
-                telegram_username = line.split(":", 1)[-1].strip()
+    for line in lines:
 
-        if not full_name or not username or not telegram_username:
-            await message.answer("❌ Barcha maydonlarni to'ldiring!")
-            return
+        if "1️⃣" in line:
+            full_name = line.split(":", 1)[-1].strip()
 
-        # Avval ro'yxatdan o'tganmi tekshirish
-        existing = await db.get_player_by_user_id(message.from_user.id)
-        if existing:
-            await message.answer("❌ Siz avval ro'yxatdan o'tgansiz!")
-            return
+        elif "2️⃣" in line:
+            username = line.split(":", 1)[-1].strip()
 
-        # Yangi ishtirokchini qo'shish
-        await db.add_player(full_name, username, telegram_username, message.from_user.id)
+        elif "3️⃣" in line:
+            telegram_username = line.split(":", 1)[-1].strip()
 
-        confirm_keyboard = InlineKeyboardMarkup(
-            inline_keyboard=[
-                [
-                    InlineKeyboardButton(text="✅ HA, o'zim xohlayman", callback_data="confirm_yes"),
-                    InlineKeyboardButton(text="❌ YO'Q", callback_data="confirm_no")
-                ]
+    existing = await db.get_player_by_user_id(message.from_user.id)
+
+    if existing:
+        await message.answer("❌ Siz avval ro'yxatdan o'tgansiz!")
+        return
+
+    await db.add_player(
+        full_name,
+        username,
+        telegram_username,
+        message.from_user.id
+    )
+
+    confirm_keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="✅ HA, o'zim xohlayman",
+                    callback_data="confirm_yes"
+                ),
+                InlineKeyboardButton(
+                    text="❌ YO'Q",
+                    callback_data="confirm_no"
+                )
             ]
-        )
+        ]
+    )
 
-        await message.answer(
-            "⚠️ To'lovni o'zingiz xohlab qilyapsizmi?\nHech kim majburlamayaptimi?",
-            reply_markup=confirm_keyboard
-        )
-
-    except Exception as e:
-        await message.answer(f"❌ Xatolik yuz berdi: {str(e)}")
+    await message.answer(
+        "⚠️ To'lovni o'zingiz xohlab qilyapsizmi?",
+        reply_markup=confirm_keyboard
+    )
