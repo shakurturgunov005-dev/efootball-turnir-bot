@@ -116,7 +116,7 @@ async def approve_payment(callback: types.CallbackQuery):
 
     user_id = int(callback.data.split("_")[1])
 
-    await db.confirm_payment(user_id)
+    await db.update_payment_status(user_id)
 
     await callback.message.edit_caption(
         callback.message.caption + "\n\n✅ To'lov tasdiqlandi"
@@ -168,18 +168,52 @@ async def admin_players(callback: types.CallbackQuery):
         await callback.answer()
         return
 
-    text = "👥 TASDIQLANGAN ISHTIROKCHILAR\n\n"
-
     for i, p in enumerate(players, 1):
 
-        text += f"{i}. {p['full_name']} - @{p['telegram_username']}\n"
+        keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="❌ O'chirish",
+                        callback_data=f"delete_player_{p['user_id']}"
+                    )
+                ]
+            ]
+        )
 
-    await callback.message.edit_text(
-        text,
-        reply_markup=admin_menu()
-    )
+        await callback.message.answer(
+            f"""
+👤 {i}-ishtirokchi
+
+1️⃣ Ismi: {p['full_name']}
+2️⃣ eFootball username: {p['username']}
+3️⃣ Telegram: https://t.me/{p['telegram_username']}
+""",
+            reply_markup=keyboard
+        )
 
     await callback.answer()
+
+
+# ================= DELETE PLAYER =================
+
+@router.callback_query(F.data.startswith("delete_player_"))
+async def delete_player(callback: types.CallbackQuery):
+
+    user_id = int(callback.data.split("_")[2])
+
+    await db.delete_player(user_id)
+
+    await callback.message.edit_text(
+        "❌ Ishtirokchi turnirdan o'chirildi."
+    )
+
+    await callback.bot.send_message(
+        user_id,
+        "❌ Siz turnirdan chiqarildingiz."
+    )
+
+    await callback.answer("O'chirildi")
 
 
 # ================= STATISTICS =================
