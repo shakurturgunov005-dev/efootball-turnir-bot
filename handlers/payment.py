@@ -1,4 +1,5 @@
 from aiogram import Router, types, F
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from database import db
 from config import CARD_NUMBER, CARD_HOLDER, PAYMENT_AMOUNT, RUB, ADMIN_IDS
 import asyncio
@@ -67,13 +68,71 @@ async def handle_payment_photo(message: types.Message):
 
     for admin_id in ADMIN_IDS:
         try:
-            await message.bot.send_message(
-                admin_id,
-                f"💰 **Yangi to'lov keldi!**\n\n👤 {user['full_name']}\n🆔 {user_id}",
-                parse_mode="Markdown"
+
+            keyboard = InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [
+                        InlineKeyboardButton(
+                            text="✅ Tasdiqlash",
+                            callback_data=f"approve_{user_id}"
+                        ),
+                        InlineKeyboardButton(
+                            text="❌ Rad etish",
+                            callback_data=f"reject_{user_id}"
+                        )
+                    ]
+                ]
             )
 
-            await message.bot.send_photo(admin_id, photo_id)
+            await message.bot.send_photo(
+                admin_id,
+                photo=photo_id,
+                caption=f"💰 **Yangi to'lov keldi!**\n\n👤 {user['full_name']}\n🆔 {user_id}",
+                parse_mode="Markdown",
+                reply_markup=keyboard
+            )
 
         except:
             pass
+
+
+# ================= TO'LOVNI TASDIQLASH =================
+
+@router.callback_query(F.data.startswith("approve_"))
+async def approve_payment(callback: types.CallbackQuery):
+
+    user_id = int(callback.data.split("_")[1])
+
+    await db.confirm_payment(user_id)
+
+    await callback.message.edit_caption(
+        callback.message.caption + "\n\n✅ To'lov tasdiqlandi"
+    )
+
+    await callback.bot.send_message(
+        user_id,
+        "🎉 To'lovingiz tasdiqlandi! Siz turnirga qo'shildingiz."
+    )
+
+    await callback.answer()
+
+
+# ================= RAD ETISH =================
+
+@router.callback_query(F.data.startswith("reject_"))
+async def reject_payment(callback: types.CallbackQuery):
+
+    user_id = int(callback.data.split("_")[1])
+
+    await db.delete_player(user_id)
+
+    await callback.message.edit_caption(
+        callback.message.caption + "\n\n❌ To'lov rad etildi"
+    )
+
+    await callback.bot.send_message(
+        user_id,
+        "❌ To'lovingiz rad etildi. Qayta yuboring."
+    )
+
+    await callback.answer()
