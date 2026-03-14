@@ -42,7 +42,7 @@ async def main_menu():
     )
 
 
-# ================= BACK =================
+# ================= BACK MENU =================
 
 async def back_menu():
 
@@ -59,7 +59,7 @@ async def back_menu():
 async def start_handler(message: types.Message):
 
     text = """
-🎮 **eFootball TURNIR BOTI** 🤖
+🎮 eFootball TURNIR BOTI
 
 🏆 Professional turnirga xush kelibsiz!
 
@@ -68,8 +68,7 @@ Quyidagi menyudan foydalaning.
 
     await message.answer(
         text,
-        reply_markup=await main_menu(),
-        parse_mode="Markdown"
+        reply_markup=await main_menu()
     )
 
 
@@ -79,18 +78,17 @@ Quyidagi menyudan foydalaning.
 async def about(callback: types.CallbackQuery):
 
     text = """
-ℹ️ **Turnir haqida**
+ℹ️ Turnir haqida
 
-🎮 O'yin: eFootball  
-👥 Ishtirokchilar: 16  
-🏆 Format: Guruh bosqichi + Play-Off  
+🎮 O'yin: eFootball
+👥 Ishtirokchilar: 16
+🏆 Format: Guruh bosqichi + PlayOff
 💰 Badal: 300₽
 """
 
     await callback.message.edit_text(
         text,
-        reply_markup=await back_menu(),
-        parse_mode="Markdown"
+        reply_markup=await back_menu()
     )
 
     await callback.answer()
@@ -106,7 +104,8 @@ async def players(callback: types.CallbackQuery):
     if not players:
         text = "👥 Hali ishtirokchilar yo'q."
     else:
-        text = "👥 **Ishtirokchilar ro'yxati**\n\n"
+
+        text = "👥 Ishtirokchilar ro'yxati\n\n"
 
         for i, p in enumerate(players, 1):
 
@@ -116,8 +115,7 @@ async def players(callback: types.CallbackQuery):
 
     await callback.message.edit_text(
         text,
-        reply_markup=await back_menu(),
-        parse_mode="Markdown"
+        reply_markup=await back_menu()
     )
 
     await callback.answer()
@@ -129,15 +127,14 @@ async def players(callback: types.CallbackQuery):
 async def table(callback: types.CallbackQuery):
 
     text = """
-🏆 **Turnir jadvali**
+🏆 Turnir jadvali
 
 Jadval hali shakllanmagan.
 """
 
     await callback.message.edit_text(
         text,
-        reply_markup=await back_menu(),
-        parse_mode="Markdown"
+        reply_markup=await back_menu()
     )
 
     await callback.answer()
@@ -149,15 +146,14 @@ Jadval hali shakllanmagan.
 async def matches(callback: types.CallbackQuery):
 
     text = """
-🎮 **Matchlar**
+🎮 Matchlar
 
 Matchlar tez orada e'lon qilinadi.
 """
 
     await callback.message.edit_text(
         text,
-        reply_markup=await back_menu(),
-        parse_mode="Markdown"
+        reply_markup=await back_menu()
     )
 
     await callback.answer()
@@ -180,15 +176,14 @@ async def tournament_full(callback: types.CallbackQuery):
 async def back(callback: types.CallbackQuery):
 
     text = """
-🎮 **eFootball TURNIR BOTI** 🤖
+🎮 eFootball TURNIR BOTI
 
 🏆 Professional turnirga xush kelibsiz!
 """
 
     await callback.message.edit_text(
         text,
-        reply_markup=await main_menu(),
-        parse_mode="Markdown"
+        reply_markup=await main_menu()
     )
 
     await callback.answer()
