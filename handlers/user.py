@@ -44,8 +44,8 @@ def main_menu(user_id, players_count):
         ]
     ]
 
-    # Admin tekshirish
-    if user_id in ADMIN_IDS:
+    # Admin tekshirish (mustahkam variant)
+    if int(user_id) in [int(admin) for admin in ADMIN_IDS]:
 
         keyboard.append([
             InlineKeyboardButton(
