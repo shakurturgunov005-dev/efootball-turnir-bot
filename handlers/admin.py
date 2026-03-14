@@ -76,6 +76,7 @@ Kerakli bo'limni tanlang.
 async def admin_players(callback: types.CallbackQuery):
 
     if callback.from_user.id not in ADMIN_IDS:
+        await callback.answer("❌ Siz admin emassiz", show_alert=True)
         return
 
     players = await db.get_all_players()
@@ -91,20 +92,21 @@ async def admin_players(callback: types.CallbackQuery):
             text += (
                 f"{i}. {p['full_name']}\n"
                 f"🎮 {p['username']}\n"
-                f"💰 Paid: {p['paid']}\n\n"
+                f"💰 Paid: {p['payment_status']}\n\n"
             )
+
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="⬅️ Orqaga", callback_data="admin_panel")]
+        ]
+    )
 
     await callback.message.edit_text(
         text,
-        reply_markup=InlineKeyboardMarkup(
-            inline_keyboard=[
-                [InlineKeyboardButton(text="⬅️ Orqaga", callback_data="admin_panel")]
-            ]
-        )
+        reply_markup=keyboard
     )
 
     await callback.answer()
-
 
 # ================= STATS =================
 
