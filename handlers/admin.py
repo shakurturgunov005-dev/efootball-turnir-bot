@@ -1,7 +1,7 @@
 from aiogram import Router, types, F
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from database import db
-from config import ADMIN_IDS
+from config import ADMIN_IDS, MAX_PLAYERS
 
 router = Router()
 
@@ -45,7 +45,7 @@ def admin_menu():
     return keyboard
 
 
-# ADMIN PANEL
+# ================= ADMIN PANEL =================
 
 @router.callback_query(F.data == "admin_panel")
 async def admin_panel(callback: types.CallbackQuery):
@@ -61,7 +61,7 @@ async def admin_panel(callback: types.CallbackQuery):
     await callback.answer()
 
 
-# STATISTIKA
+# ================= STATISTIKA =================
 
 @router.callback_query(F.data == "admin_stats")
 async def admin_stats(callback: types.CallbackQuery):
@@ -95,7 +95,7 @@ async def admin_stats(callback: types.CallbackQuery):
     await callback.answer()
 
 
-# ISHTIROKCHILAR
+# ================= ISHTIROKCHILAR =================
 
 @router.callback_query(F.data == "admin_players")
 async def admin_players(callback: types.CallbackQuery):
@@ -141,7 +141,7 @@ async def admin_players(callback: types.CallbackQuery):
     await callback.answer()
 
 
-# PLAYER DELETE
+# ================= PLAYER DELETE =================
 
 @router.callback_query(F.data.startswith("delete_"))
 async def delete_player(callback: types.CallbackQuery):
@@ -185,16 +185,19 @@ async def delete_player(callback: types.CallbackQuery):
     )
 
 
-# BACK MENU
+# ================= BACK MENU =================
 
 @router.callback_query(F.data == "back_menu")
 async def back_menu(callback: types.CallbackQuery):
 
     from handlers.user import main_menu
 
+    players = await db.get_all_players(paid_only=True)
+    players_count = len(players)
+
     await callback.message.edit_text(
         "🏠 Bosh menyu",
-        reply_markup=main_menu(callback.from_user.id)
+        reply_markup=main_menu(callback.from_user.id, players_count)
     )
 
     await callback.answer()
