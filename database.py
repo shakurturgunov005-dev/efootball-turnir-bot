@@ -61,6 +61,13 @@ class Database:
                 user_id
             )
 
+    # 🧹 TURNIRNI TOZALASH
+    async def delete_all_players(self):
+        async with self.pool.acquire() as conn:
+            await conn.execute(
+                "DELETE FROM players"
+            )
+
     # ================= PAYMENT =================
 
     async def update_payment_status(self, user_id, photo_id):
@@ -76,6 +83,18 @@ class Database:
                 "UPDATE players SET payment_status=TRUE WHERE user_id=$1",
                 user_id
             )
+
+    # ⏳ KUTILAYOTGAN TO'LOVLAR
+    async def get_pending_payments(self):
+        async with self.pool.acquire() as conn:
+            return await conn.fetch("""
+            SELECT * FROM players
+            WHERE payment_status=FALSE
+            AND payment_photo IS NOT NULL
+            ORDER BY id
+            """)
+
+    # ================= STATISTICS =================
 
     async def get_statistics(self):
         async with self.pool.acquire() as conn:
