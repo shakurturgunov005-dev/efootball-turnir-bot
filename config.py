@@ -4,8 +4,15 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
+
 CHANNEL_ID = int(os.getenv("CHANNEL_ID", "0"))
-ADMIN_IDS = [int(id) for id in os.getenv("ADMIN_IDS", "").split(",") if id]
+
+ADMIN_IDS = [
+    int(admin_id)
+    for admin_id in os.getenv("ADMIN_IDS", "").split(",")
+    if admin_id
+]
+
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 MAX_PLAYERS = 16
