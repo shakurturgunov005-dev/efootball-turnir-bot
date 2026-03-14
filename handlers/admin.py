@@ -8,14 +8,17 @@ import random
 router = Router()
 
 
-# MATCH GENERATOR
+# ================= MATCH GENERATOR =================
+
 async def generate_matches():
+
     players = await db.get_all_players(paid_only=True)
 
     players = list(players)
     random.shuffle(players)
 
     async with db.pool.acquire() as conn:
+
         for i in range(0, len(players), 2):
 
             if i + 1 >= len(players):
@@ -33,7 +36,8 @@ async def generate_matches():
             )
 
 
-# ADMIN MENU
+# ================= ADMIN MENU =================
+
 def admin_menu():
     return InlineKeyboardMarkup(
         inline_keyboard=[
@@ -47,38 +51,109 @@ def admin_menu():
     )
 
 
-# ADMIN PANEL
+# ================= ADMIN PANEL =================
+
 @router.message(Command("admin"))
 async def admin_panel(message: types.Message):
 
     if message.from_user.id not in ADMIN_IDS:
         return
 
-    await message.answer("👑 ADMIN PANEL", reply_markup=admin_menu())
+    await message.answer(
+        "👑 ADMIN PANEL",
+        reply_markup=admin_menu()
+    )
 
 
-# PLAYERS
+# ================= PLAYERS =================
+
 @router.callback_query(F.data == "admin_players")
 async def show_players(callback: types.CallbackQuery):
 
-    players = await db.get_all_players(paid_only=True)
+    players = await db.get_all_players()
 
     if not players:
-        await callback.message.edit_text("📭 Hali ishtirokchilar yo'q.", reply_markup=admin_menu())
+        await callback.message.edit_text(
+            "📭 Hali ishtirokchilar yo'q.",
+            reply_markup=admin_menu()
+        )
         await callback.answer()
         return
 
-    text = f"📋 Ishtirokchilar ({len(players)}/{MAX_PLAYERS})\n\n"
+    text = "📋 ISHTIROKCHILAR\n\n"
+
+    keyboard = []
 
     for p in players:
-        username = f"@{p['username']}" if p['username'] else "username yo'q"
-        text += f"{p['id']}. {p['full_name']} - {username}\n   ✅ To'lov qilingan\n\n"
 
-    await callback.message.edit_text(text, reply_markup=admin_menu())
+        username = f"@{p['username']}" if p['username'] else "username yo'q"
+
+        text += f"{p['id']}. {p['full_name']} - {username}\n"
+
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    text=f"❌ {p['full_name']} ni o'chirish",
+                    callback_data=f"delete_{p['user_id']}"
+                )
+            ]
+        )
+
+    keyboard.append(
+        [InlineKeyboardButton(text="⬅️ Orqaga", callback_data="admin_back")]
+    )
+
+    await callback.message.edit_text(
+        text,
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
+    )
+
     await callback.answer()
 
 
-# STATISTICS
+# ================= DELETE PLAYER =================
+
+@router.callback_query(F.data.startswith("delete_"))
+async def delete_player(callback: types.CallbackQuery):
+
+    user_id = int(callback.data.split("_")[1])
+
+    async with db.pool.acquire() as conn:
+        await conn.execute(
+            "DELETE FROM players WHERE user_id=$1",
+            user_id
+        )
+
+    await callback.answer("✅ Ishtirokchi o'chirildi", show_alert=True)
+
+    players = await db.get_all_players()
+
+    text = "📋 ISHTIROKCHILAR\n\n"
+
+    for p in players:
+
+        username = f"@{p['username']}" if p['username'] else "username yo'q"
+
+        text += f"{p['id']}. {p['full_name']} - {username}\n"
+
+    await callback.message.edit_text(text)
+
+
+# ================= BACK =================
+
+@router.callback_query(F.data == "admin_back")
+async def admin_back(callback: types.CallbackQuery):
+
+    await callback.message.edit_text(
+        "👑 ADMIN PANEL",
+        reply_markup=admin_menu()
+    )
+
+    await callback.answer()
+
+
+# ================= STATISTICS =================
+
 @router.callback_query(F.data == "admin_stats")
 async def show_stats(callback: types.CallbackQuery):
 
@@ -98,49 +173,8 @@ async def show_stats(callback: types.CallbackQuery):
     await callback.answer()
 
 
-# PAYMENT CHECK
-@router.callback_query(F.data == "admin_payments")
-async def check_payments(callback: types.CallbackQuery):
+# ================= POST =================
 
-    async with db.pool.acquire() as conn:
-        rows = await conn.fetch(
-            "SELECT * FROM players WHERE payment_status = FALSE AND payment_photo IS NOT NULL"
-        )
-
-    if not rows:
-        await callback.message.edit_text("📭 Tekshirilmagan to'lovlar yo'q.", reply_markup=admin_menu())
-        await callback.answer()
-        return
-
-    await callback.message.edit_text("💰 Tekshirilayotgan to'lovlar...", reply_markup=admin_menu())
-
-    for row in rows:
-
-        keyboard = InlineKeyboardMarkup(
-            inline_keyboard=[
-                [
-                    InlineKeyboardButton(text="✅ Tasdiqlash", callback_data=f"confirm_{row['user_id']}"),
-                    InlineKeyboardButton(text="❌ Rad etish", callback_data=f"reject_{row['user_id']}")
-                ]
-            ]
-        )
-
-        await callback.message.answer(
-            f"💰 Yangi to'lov\n\n👤 {row['full_name']}\n🆔 {row['user_id']}",
-            reply_markup=keyboard
-        )
-
-        if row['payment_photo']:
-            await callback.bot.send_photo(
-                callback.message.chat.id,
-                row['payment_photo'],
-                caption="📸 To'lov cheki"
-            )
-
-    await callback.answer()
-
-
-# POST
 @router.callback_query(F.data == "admin_post")
 async def send_post(callback: types.CallbackQuery):
 
@@ -153,19 +187,11 @@ async def send_post(callback: types.CallbackQuery):
 🏆 Professional eFootball turniriga xush kelibsiz!
 
 👥 Ishtirokchilar: {count} / {MAX_PLAYERS}
-
-ℹ️ Badal: 300₽
 """
-
-    if count == MAX_PLAYERS - 1:
-        text += "\n\n⚠️ Oxirgi joy qoldi!"
-
-    if count >= MAX_PLAYERS:
-        text += "\n\n❌ Ro'yxatdan o'tish yopildi!"
 
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="⚽️ Turnirga qatnashish", callback_data="register")]
+            [InlineKeyboardButton(text="⚽ Turnirga qatnashish", callback_data="register")]
         ]
     )
 
@@ -178,7 +204,8 @@ async def send_post(callback: types.CallbackQuery):
     await callback.answer("Post yuborildi")
 
 
-# MATCH GENERATE
+# ================= MATCH CREATE =================
+
 @router.callback_query(F.data == "admin_match")
 async def create_matches(callback: types.CallbackQuery):
 
@@ -208,7 +235,8 @@ async def create_matches(callback: types.CallbackQuery):
     await callback.answer()
 
 
-# CLEAR DATABASE
+# ================= CLEAR DATABASE =================
+
 @router.callback_query(F.data == "admin_clear")
 async def clear_all(callback: types.CallbackQuery):
 
@@ -233,10 +261,12 @@ async def clear_all(callback: types.CallbackQuery):
 async def clear_yes(callback: types.CallbackQuery):
 
     async with db.pool.acquire() as conn:
-        await conn.execute("""
-        TRUNCATE players, matches
-        RESTART IDENTITY CASCADE
-        """)
+        await conn.execute(
+            """
+            TRUNCATE players, matches
+            RESTART IDENTITY CASCADE
+            """
+        )
 
     await callback.message.edit_text("✅ Barcha ma'lumotlar tozalandi!")
     await callback.answer()
