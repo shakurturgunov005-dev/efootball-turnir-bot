@@ -67,9 +67,7 @@ async def about(callback: types.CallbackQuery):
 
 🎮 O'yin: eFootball  
 👥 Ishtirokchilar: 16  
-
-🏆 Format: PlayOff
-
+🏆 Format: PlayOff  
 💰 Badal: 300₽
 """
 
@@ -102,6 +100,26 @@ Hozircha ro'yxat shakllanmoqda.
     await callback.answer()
 
 
+# ================= TABLE =================
+
+@router.callback_query(F.data == "table")
+async def table(callback: types.CallbackQuery):
+
+    text = """
+🏆 **Turnir jadvali**
+
+Jadval hali shakllanmagan.
+"""
+
+    await callback.message.edit_text(
+        text,
+        reply_markup=back_button(),
+        parse_mode="Markdown"
+    )
+
+    await callback.answer()
+
+
 # ================= MATCHES =================
 
 @router.callback_query(F.data == "matches")
@@ -111,6 +129,26 @@ async def matches(callback: types.CallbackQuery):
 🎮 **Matchlar**
 
 Matchlar tez orada e'lon qilinadi.
+"""
+
+    await callback.message.edit_text(
+        text,
+        reply_markup=back_button(),
+        parse_mode="Markdown"
+    )
+
+    await callback.answer()
+
+
+# ================= REGISTER =================
+
+@router.callback_query(F.data == "register")
+async def register(callback: types.CallbackQuery):
+
+    text = """
+📝 **Turnirga ro'yxatdan o'tish**
+
+Ro'yxatdan o'tish uchun admin bilan bog'laning.
 """
 
     await callback.message.edit_text(
