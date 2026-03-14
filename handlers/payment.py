@@ -7,27 +7,31 @@ import asyncio
 router = Router()
 
 
+# ================= TO'LOVNI TASDIQLASH SAVOLI =================
+
 @router.callback_query(F.data == "confirm_yes")
 async def confirm_yes(callback: types.CallbackQuery):
 
     await callback.message.delete()
 
     payment_text = f"""
-💳 **TO'LOV MA'LUMOTLARI**
+💳 TO'LOV MA'LUMOTLARI
 
 Turnirda ishtirok etish uchun {PAYMENT_AMOUNT} {RUB} to'lashingiz kerak.
 
-**Karta raqami:** `{CARD_NUMBER}`
-**Qabul qiluvchi:** {CARD_HOLDER}
+Karta raqami: {CARD_NUMBER}
+Qabul qiluvchi: {CARD_HOLDER}
 
-📌 To'lovni amalga oshirgach, **chekni (skrinshot)** shu yerga yuboring.
+📌 To'lovni amalga oshirgach, chekni (skrinshot) shu yerga yuboring.
 
-Admin to'lovni tasdiqlagach, ro'yxatdan o'tgan hisoblanasiz.
+Admin tasdiqlagach siz turnirga qo'shilasiz.
 """
 
-    await callback.message.answer(payment_text, parse_mode="Markdown")
+    await callback.message.answer(payment_text)
     await callback.answer()
 
+
+# ================= RO'YXATNI BEKOR QILISH =================
 
 @router.callback_query(F.data == "confirm_no")
 async def confirm_no(callback: types.CallbackQuery):
@@ -43,6 +47,8 @@ async def confirm_no(callback: types.CallbackQuery):
 
     await callback.answer()
 
+
+# ================= CHEK QABUL QILISH =================
 
 @router.message(F.photo)
 async def handle_payment_photo(message: types.Message):
@@ -66,6 +72,8 @@ async def handle_payment_photo(message: types.Message):
         "✅ To'lov cheki qabul qilindi. Admin tekshirgach, ro'yxatdan o'tasiz."
     )
 
+    # ================= ADMINLARGA YUBORISH =================
+
     for admin_id in ADMIN_IDS:
         try:
 
@@ -86,9 +94,13 @@ async def handle_payment_photo(message: types.Message):
 
             await message.bot.send_photo(
                 admin_id,
-                photo=photo_id,
-                caption=f"💰 **Yangi to'lov keldi!**\n\n👤 {user['full_name']}\n🆔 {user_id}",
-                parse_mode="Markdown",
+                photo_id,
+                caption=f"""
+💰 Yangi to'lov keldi!
+
+👤 {user['full_name']}
+🆔 {user_id}
+""",
                 reply_markup=keyboard
             )
 
@@ -96,14 +108,14 @@ async def handle_payment_photo(message: types.Message):
             pass
 
 
-# ================= TO'LOVNI TASDIQLASH =================
+# ================= ADMIN TASDIQLASH =================
 
 @router.callback_query(F.data.startswith("approve_"))
 async def approve_payment(callback: types.CallbackQuery):
 
     user_id = int(callback.data.split("_")[1])
 
-    await db.confirm_payment(user_id)
+    await db.update_payment_status(user_id)
 
     await callback.message.edit_caption(
         callback.message.caption + "\n\n✅ To'lov tasdiqlandi"
@@ -114,10 +126,10 @@ async def approve_payment(callback: types.CallbackQuery):
         "🎉 To'lovingiz tasdiqlandi! Siz turnirga qo'shildingiz."
     )
 
-    await callback.answer()
+    await callback.answer("Tasdiqlandi")
 
 
-# ================= RAD ETISH =================
+# ================= ADMIN RAD ETISH =================
 
 @router.callback_query(F.data.startswith("reject_"))
 async def reject_payment(callback: types.CallbackQuery):
@@ -135,4 +147,4 @@ async def reject_payment(callback: types.CallbackQuery):
         "❌ To'lovingiz rad etildi. Qayta yuboring."
     )
 
-    await callback.answer()
+    await callback.answer("Rad etildi")
