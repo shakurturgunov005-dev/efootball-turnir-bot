@@ -1,10 +1,12 @@
 from aiogram import Router, types, F
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from config import ADMIN_IDS
 from database import db
-from config import ADMIN_IDS, MAX_PLAYERS
 
 router = Router()
 
+
+# ================= ADMIN MENU =================
 
 def admin_menu():
 
@@ -13,7 +15,7 @@ def admin_menu():
 
             [
                 InlineKeyboardButton(
-                    text="⏳ Tasdiqlanishi kutilayotganlar",
+                    text="💰 To'lovlarni tasdiqlash",
                     callback_data="pending_payments"
                 )
             ],
@@ -35,7 +37,7 @@ def admin_menu():
             [
                 InlineKeyboardButton(
                     text="⬅️ Orqaga",
-                    callback_data="back_menu"
+                    callback_data="back"
                 )
             ]
 
@@ -45,168 +47,93 @@ def admin_menu():
     return keyboard
 
 
-# ================= ADMIN PANEL =================
+# ================= OPEN ADMIN PANEL =================
 
 @router.callback_query(F.data == "admin_panel")
 async def admin_panel(callback: types.CallbackQuery):
 
-    if int(callback.from_user.id) not in [int(admin) for admin in ADMIN_IDS]:
+    if callback.from_user.id not in ADMIN_IDS:
+        await callback.answer("❌ Siz admin emassiz", show_alert=True)
         return
 
+    text = """
+👑 ADMIN PANEL
+
+Kerakli bo'limni tanlang.
+"""
+
     await callback.message.edit_text(
-        "👑 ADMIN PANEL",
+        text,
         reply_markup=admin_menu()
     )
 
     await callback.answer()
 
 
-# ================= STATISTIKA =================
-
-@router.callback_query(F.data == "admin_stats")
-async def admin_stats(callback: types.CallbackQuery):
-
-    if int(callback.from_user.id) not in [int(admin) for admin in ADMIN_IDS]:
-        return
-
-    total, paid, waiting = await db.get_statistics()
-
-    text = f"""
-📊 STATISTIKA
-
-👥 Jami ro'yxatdan o'tgan: {total}
-✅ To'lov qilgan: {paid}
-⏳ Tekshirilmagan: {waiting}
-"""
-
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text="⬅️ Orqaga",
-                    callback_data="admin_panel"
-                )
-            ]
-        ]
-    )
-
-    await callback.message.edit_text(
-        text,
-        reply_markup=keyboard
-    )
-
-    await callback.answer()
-
-
-# ================= ISHTIROKCHILAR =================
+# ================= PLAYERS LIST =================
 
 @router.callback_query(F.data == "admin_players")
 async def admin_players(callback: types.CallbackQuery):
 
-    if int(callback.from_user.id) not in [int(admin) for admin in ADMIN_IDS]:
+    if callback.from_user.id not in ADMIN_IDS:
         return
 
-    players = await db.get_all_players(paid_only=True)
+    players = await db.get_all_players()
 
     if not players:
+        text = "Hali o'yinchilar yo'q."
+    else:
 
-        await callback.message.edit_text(
-            "❌ Hali ishtirokchilar yo'q.",
-            reply_markup=admin_menu()
-        )
+        text = "👥 Barcha ishtirokchilar\n\n"
 
-        return
+        for i, p in enumerate(players, 1):
 
-    text = "👥 TASDIQLANGAN ISHTIROKCHILAR\n\n"
-
-    keyboard = []
-
-    for i, p in enumerate(players, 1):
-
-        text += f"{i}. {p['full_name']} - https://t.me/{p['telegram_username']}\n"
-
-        keyboard.append([
-            InlineKeyboardButton(
-                text=f"❌ {p['full_name']} ni o'chirish",
-                callback_data=f"delete_{p['user_id']}"
+            text += (
+                f"{i}. {p['full_name']}\n"
+                f"🎮 {p['username']}\n"
+                f"💰 Paid: {p['paid']}\n\n"
             )
-        ])
-
-    keyboard.append([
-        InlineKeyboardButton(
-            text="⬅️ Orqaga",
-            callback_data="admin_panel"
-        )
-    ])
 
     await callback.message.edit_text(
         text,
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="⬅️ Orqaga", callback_data="admin_panel")]
+            ]
+        )
     )
 
     await callback.answer()
 
 
-# ================= PLAYER DELETE =================
+# ================= STATS =================
 
-@router.callback_query(F.data.startswith("delete_"))
-async def delete_player(callback: types.CallbackQuery):
+@router.callback_query(F.data == "admin_stats")
+async def admin_stats(callback: types.CallbackQuery):
 
-    if int(callback.from_user.id) not in [int(admin) for admin in ADMIN_IDS]:
+    if callback.from_user.id not in ADMIN_IDS:
         return
 
-    user_id = int(callback.data.split("_")[1])
+    players = await db.get_all_players()
+    paid = await db.get_all_players(paid_only=True)
 
-    await db.delete_player(user_id)
+    text = f"""
+📊 STATISTIKA
 
-    await callback.answer(
-        "❌ Ishtirokchi o'chirildi",
-        show_alert=True
-    )
+👥 Barcha ro'yxatdan o'tganlar: {len(players)}
 
-    players = await db.get_all_players(paid_only=True)
+💰 To'lov qilganlar: {len(paid)}
 
-    text = "👥 TASDIQLANGAN ISHTIROKCHILAR\n\n"
-
-    keyboard = []
-
-    for i, p in enumerate(players, 1):
-
-        text += f"{i}. {p['full_name']} - https://t.me/{p['telegram_username']}\n"
-
-        keyboard.append([
-            InlineKeyboardButton(
-                text=f"❌ {p['full_name']} ni o'chirish",
-                callback_data=f"delete_{p['user_id']}"
-            )
-        ])
-
-    keyboard.append([
-        InlineKeyboardButton(
-            text="⬅️ Orqaga",
-            callback_data="admin_panel"
-        )
-    ])
+⌛ To'lov qilmaganlar: {len(players) - len(paid)}
+"""
 
     await callback.message.edit_text(
         text,
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
-    )
-
-
-# ================= BACK MENU =================
-
-@router.callback_query(F.data == "back_menu")
-async def back_menu(callback: types.CallbackQuery):
-
-    from handlers.user import main_menu
-
-    players = await db.get_all_players(paid_only=True)
-    players_count = len(players)
-
-    await callback.message.edit_text(
-        "🏠 Bosh menyu",
-        reply_markup=main_menu(callback.from_user.id, players_count)
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="⬅️ Orqaga", callback_data="admin_panel")]
+            ]
+        )
     )
 
     await callback.answer()
