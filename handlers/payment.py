@@ -105,8 +105,8 @@ async def handle_payment_photo(message: types.Message):
                 reply_markup=keyboard
             )
 
-        except:
-            pass
+        except Exception as e:
+            print(e)
 
 
 # ================= ADMIN TASDIQLASH =================
@@ -116,7 +116,6 @@ async def approve_payment(callback: types.CallbackQuery):
 
     user_id = int(callback.data.split("_")[1])
 
-    # TO'LOVNI TASDIQLASH
     await db.confirm_payment(user_id)
 
     await callback.message.edit_caption(
@@ -150,3 +149,47 @@ async def reject_payment(callback: types.CallbackQuery):
     )
 
     await callback.answer("Rad etildi")
+
+
+# ================= KUTILAYOTGAN TO'LOVLAR =================
+
+@router.callback_query(F.data == "pending_payments")
+async def pending_payments(callback: types.CallbackQuery):
+
+    if callback.from_user.id not in ADMIN_IDS:
+        await callback.answer("❌ Siz admin emassiz", show_alert=True)
+        return
+
+    players = await db.get_all_players()
+
+    pending = [p for p in players if not p["payment_status"]]
+
+    if not pending:
+        text = "⌛ Tasdiqlanishi kutilayotgan to'lovlar yo'q."
+    else:
+
+        text = "⌛ Tasdiqlanishi kutilayotganlar\n\n"
+
+        for p in pending:
+            text += f"""
+👤 {p['full_name']}
+🆔 {p['user_id']}
+"""
+
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="⬅️ Orqaga",
+                    callback_data="back"
+                )
+            ]
+        ]
+    )
+
+    await callback.message.edit_text(
+        text,
+        reply_markup=keyboard
+    )
+
+    await callback.answer()
