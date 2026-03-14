@@ -1,6 +1,7 @@
 from aiogram import Router, types, F
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from database import db
+from config import MAX_PLAYERS
 
 router = Router()
 
@@ -18,6 +19,22 @@ REGISTRATION_TEMPLATE = """
 
 @router.callback_query(F.data == "register")
 async def register_start(callback: types.CallbackQuery):
+
+    players = await db.get_all_players(paid_only=True)
+    count = len(players)
+
+    if count >= MAX_PLAYERS:
+
+        await callback.message.answer(
+            f"""
+❌ Turnir uchun joy qolmadi.
+
+🏆 {MAX_PLAYERS}/{MAX_PLAYERS} ishtirokchi to'lgan.
+"""
+        )
+
+        await callback.answer()
+        return
 
     await callback.message.answer(
         REGISTRATION_TEMPLATE,
@@ -70,6 +87,31 @@ async def handle_registration(message: types.Message):
         telegram_username,
         message.from_user.id
     )
+
+    # YANGI FUNKSIYA (ISHTIROKCHI SONI)
+
+    players = await db.get_all_players()
+    count = len(players)
+
+    await message.answer(
+        f"""
+✅ Yangi ishtirokchi qo'shildi
+
+📊 Hozir: {count}/{MAX_PLAYERS}
+"""
+    )
+
+    # TURNIR TO'LGANINI AYTISH
+
+    if count >= MAX_PLAYERS:
+
+        await message.answer(
+            """
+🏆 Turnir uchun 16 ishtirokchi to‘ldi!
+
+⚽ Turnir boshlandi
+"""
+        )
 
     confirm_keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
