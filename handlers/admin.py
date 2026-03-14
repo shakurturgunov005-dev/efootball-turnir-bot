@@ -33,7 +33,7 @@ def admin_menu():
                     callback_data="admin_stats"
                 )
             ],
-            
+
             [
                 InlineKeyboardButton(
                     text="🧹 Turnirni tozalash",
@@ -90,30 +90,97 @@ async def admin_players(callback: types.CallbackQuery):
 
     if not players:
         text = "Hali o'yinchilar yo'q."
-    else:
+        keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="⬅️ Orqaga", callback_data="admin_panel")]
+            ]
+        )
 
-        text = "👥 Barcha ishtirokchilar\n\n"
+        await callback.message.edit_text(text, reply_markup=keyboard)
+        await callback.answer()
+        return
 
-        for i, p in enumerate(players, 1):
+    text = "👥 Barcha ishtirokchilar\n\n"
+    keyboard = []
 
-            text += (
-                f"{i}. {p['full_name']}\n"
-                f"🎮 {p['username']}\n"
-                f"💰 Paid: {p['payment_status']}\n\n"
+    for i, p in enumerate(players, 1):
+
+        text += (
+            f"{i}. {p['full_name']}\n"
+            f"🎮 {p['username']}\n"
+            f"💰 Paid: {p['payment_status']}\n\n"
+        )
+
+        keyboard.append([
+            InlineKeyboardButton(
+                text=f"❌ {p['full_name']} ni o'chirish",
+                callback_data=f"delete_player_{p['user_id']}"
             )
+        ])
 
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="⬅️ Orqaga", callback_data="admin_panel")]
-        ]
+    keyboard.append(
+        [InlineKeyboardButton(text="⬅️ Orqaga", callback_data="admin_panel")]
     )
 
     await callback.message.edit_text(
         text,
-        reply_markup=keyboard
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
     )
 
     await callback.answer()
+
+
+# ================= DELETE PLAYER =================
+
+@router.callback_query(F.data.startswith("delete_player_"))
+async def delete_player(callback: types.CallbackQuery):
+
+    if callback.from_user.id not in ADMIN_IDS:
+        await callback.answer("❌ Siz admin emassiz", show_alert=True)
+        return
+
+    user_id = int(callback.data.split("_")[2])
+
+    await db.delete_player(user_id)
+
+    await callback.answer("❌ O'yinchi o'chirildi")
+
+    await callback.message.edit_text(
+        "❌ Ishtirokchi o'chirildi",
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="⬅️ Orqaga", callback_data="admin_players")]
+            ]
+        )
+    )
+
+
+# ================= CLEAR TOURNAMENT =================
+
+@router.callback_query(F.data == "clear_tournament")
+async def clear_tournament(callback: types.CallbackQuery):
+
+    if callback.from_user.id not in ADMIN_IDS:
+        await callback.answer("❌ Siz admin emassiz", show_alert=True)
+        return
+
+    await db.delete_all_players()
+
+    await callback.message.edit_text(
+        """
+🧹 TURNIR TOZALANDI
+
+Barcha ishtirokchilar o'chirildi.
+""",
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="⬅️ Orqaga", callback_data="admin_panel")]
+            ]
+        )
+    )
+
+    await callback.answer("Turnir tozalandi")
+
 
 # ================= STATS =================
 
