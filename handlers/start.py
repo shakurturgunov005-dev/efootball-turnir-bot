@@ -11,7 +11,7 @@ router = Router()
 
 async def main_menu():
 
-    players = await db.get_all_players()
+    players = await db.get_all_players(paid_only=True)
     count = len(players)
 
     if count >= MAX_PLAYERS:
@@ -45,7 +45,6 @@ async def main_menu():
 # ================= BACK MENU =================
 
 async def back_menu():
-
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="⬅️ Orqaga", callback_data="back")]
@@ -99,19 +98,25 @@ async def about(callback: types.CallbackQuery):
 @router.callback_query(F.data == "players")
 async def players(callback: types.CallbackQuery):
 
-    players = await db.get_all_players()
+    players = await db.get_all_players(paid_only=True)
 
     if not players:
-        text = "👥 Hali ishtirokchilar yo'q."
+        text = "👥 Hali tasdiqlangan ishtirokchilar yo'q."
     else:
 
         text = "👥 Ishtirokchilar ro'yxati\n\n"
 
         for i, p in enumerate(players, 1):
 
-            username = f"@{p['username']}" if p['username'] else "username yo'q"
+            tg_username = p["telegram_username"].replace("@", "")
+            tg_link = f"https://t.me/{tg_username}"
 
-            text += f"{i}. {p['full_name']} - {username}\n"
+            text += (
+                f"№ {i}\n"
+                f"1️⃣ Ismi: {p['full_name']}\n"
+                f"2️⃣ eFootball username: {p['username']}\n"
+                f"3️⃣ Telegram username:\n{tg_link}\n\n"
+            )
 
     await callback.message.edit_text(
         text,
