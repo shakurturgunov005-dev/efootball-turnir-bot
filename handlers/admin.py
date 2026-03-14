@@ -36,42 +36,68 @@ async def admin_panel(message: types.Message):
     )
 
 
-# ================= PLAYERS =================
+# ================= PLAYERS LIST =================
 
 @router.callback_query(F.data == "admin_players")
 async def show_players(callback: types.CallbackQuery):
 
-    players = await db.get_all_players()
+    players = await db.get_all_players(paid_only=True)
 
     if not players:
         await callback.message.edit_text(
-            "📭 Hali ishtirokchilar yo'q.",
+            "📭 Hali tasdiqlangan ishtirokchilar yo'q.",
             reply_markup=admin_menu()
         )
         await callback.answer()
         return
 
-    text = "📋 ISHTIROKCHILAR\n\n"
+    text = "👥 ISHTIROKCHILAR RO'YXATI\n\n"
+
+    for i, p in enumerate(players, 1):
+
+        tg = p["telegram_username"].replace("@", "")
+        link = f"https://t.me/{tg}"
+
+        text += (
+            f"№ {i}\n"
+            f"1️⃣ Ismi: {p['full_name']}\n"
+            f"2️⃣ eFootball username: {p['username']}\n"
+            f"3️⃣ Telegram:\n{link}\n\n"
+        )
+
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="✏️ Edit", callback_data="admin_edit")],
+            [InlineKeyboardButton(text="⬅️ Orqaga", callback_data="admin_back")]
+        ]
+    )
+
+    await callback.message.edit_text(text, reply_markup=keyboard)
+    await callback.answer()
+
+
+# ================= EDIT MODE =================
+
+@router.callback_query(F.data == "admin_edit")
+async def edit_players(callback: types.CallbackQuery):
+
+    players = await db.get_all_players(paid_only=True)
+
+    text = "🗑 O'chirish uchun ishtirokchini tanlang\n\n"
 
     keyboard = []
 
     for p in players:
 
-        username = f"@{p['username']}" if p['username'] else "username yo'q"
-
-        text += f"{p['id']}. {p['full_name']} - {username}\n"
-
-        keyboard.append(
-            [
-                InlineKeyboardButton(
-                    text=f"❌ {p['full_name']} ni o'chirish",
-                    callback_data=f"delete_{p['user_id']}"
-                )
-            ]
-        )
+        keyboard.append([
+            InlineKeyboardButton(
+                text=f"❌ {p['full_name']}",
+                callback_data=f"delete_{p['user_id']}"
+            )
+        ])
 
     keyboard.append(
-        [InlineKeyboardButton(text="⬅️ Orqaga", callback_data="admin_back")]
+        [InlineKeyboardButton(text="⬅️ Orqaga", callback_data="admin_players")]
     )
 
     await callback.message.edit_text(
@@ -97,33 +123,24 @@ async def delete_player(callback: types.CallbackQuery):
 
     await callback.answer("✅ Ishtirokchi o'chirildi", show_alert=True)
 
-    players = await db.get_all_players()
-
-    text = "📋 ISHTIROKCHILAR\n\n"
+    players = await db.get_all_players(paid_only=True)
 
     keyboard = []
 
     for p in players:
-
-        username = f"@{p['username']}" if p['username'] else "username yo'q"
-
-        text += f"{p['id']}. {p['full_name']} - {username}\n"
-
-        keyboard.append(
-            [
-                InlineKeyboardButton(
-                    text=f"❌ {p['full_name']} ni o'chirish",
-                    callback_data=f"delete_{p['user_id']}"
-                )
-            ]
-        )
+        keyboard.append([
+            InlineKeyboardButton(
+                text=f"❌ {p['full_name']}",
+                callback_data=f"delete_{p['user_id']}"
+            )
+        ])
 
     keyboard.append(
-        [InlineKeyboardButton(text="⬅️ Orqaga", callback_data="admin_back")]
+        [InlineKeyboardButton(text="⬅️ Orqaga", callback_data="admin_players")]
     )
 
     await callback.message.edit_text(
-        text,
+        "🗑 O'chirish uchun ishtirokchini tanlang",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
     )
 
@@ -170,7 +187,7 @@ async def show_stats(callback: types.CallbackQuery):
 @router.callback_query(F.data == "admin_post")
 async def send_post(callback: types.CallbackQuery):
 
-    players = await db.get_all_players()
+    players = await db.get_all_players(paid_only=True)
     count = len(players)
 
     text = f"""
@@ -203,13 +220,12 @@ async def send_post(callback: types.CallbackQuery):
 @router.callback_query(F.data == "admin_match")
 async def create_matches(callback: types.CallbackQuery):
 
-    players = await db.get_all_players()
+    players = await db.get_all_players(paid_only=True)
 
     if len(players) < MAX_PLAYERS:
         await callback.answer("❌ Yetarli o'yinchi yo'q", show_alert=True)
         return
 
-    players = list(players)
     random.shuffle(players)
 
     text = "🏆 1/8 FINAL JUFTLIKLARI\n\n"
