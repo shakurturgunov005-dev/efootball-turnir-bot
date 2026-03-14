@@ -77,6 +77,64 @@ Kerakli bo'limni tanlang.
     await callback.answer()
 
 
+# ================= KUTILAYOTGAN TO'LOVLAR =================
+
+@router.callback_query(F.data == "pending_payments")
+async def pending_payments(callback: types.CallbackQuery):
+
+    if callback.from_user.id not in ADMIN_IDS:
+        await callback.answer("❌ Siz admin emassiz", show_alert=True)
+        return
+
+    players = await db.get_pending_payments()
+
+    if not players:
+
+        await callback.message.edit_text(
+            "⌛ Tasdiqlanishi kutilayotgan to'lovlar yo'q.",
+            reply_markup=InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [InlineKeyboardButton(text="⬅️ Orqaga", callback_data="admin_panel")]
+                ]
+            )
+        )
+
+        await callback.answer()
+        return
+
+    await callback.message.delete()
+
+    for p in players:
+
+        keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="✅ Tasdiqlash",
+                        callback_data=f"approve_{p['user_id']}"
+                    ),
+                    InlineKeyboardButton(
+                        text="❌ Rad etish",
+                        callback_data=f"reject_{p['user_id']}"
+                    )
+                ]
+            ]
+        )
+
+        await callback.message.answer_photo(
+            p["payment_photo"],
+            caption=f"""
+💰 Yangi to'lov
+
+👤 {p['full_name']}
+🆔 {p['user_id']}
+""",
+            reply_markup=keyboard
+        )
+
+    await callback.answer()
+
+
 # ================= PLAYERS LIST =================
 
 @router.callback_query(F.data == "admin_players")
