@@ -47,7 +47,7 @@ async def on_startup():
         logger.info("🔄 Database ga ulanish...")
         await db.create_pool()
         logger.info("✅ Database tayyor!")
-        init_channel_post(bot)
+        # init_channel_post(bot)
         logger.info("✅ Kanal post tayyor!")
         await set_commands()
         logger.info("✅ Bot ishga tushdi!")
