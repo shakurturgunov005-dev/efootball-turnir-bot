@@ -9,7 +9,7 @@ router = Router()
 
 # ================= MAIN MENU =================
 
-async def main_menu():
+async def main_menu(user_id):
 
     players = await db.get_all_players(paid_only=True)
     count = len(players)
@@ -25,22 +25,38 @@ async def main_menu():
             callback_data="register"
         )
 
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [register_button],
-            [
-                InlineKeyboardButton(text="👥 Ishtirokchilar", callback_data="players"),
-                InlineKeyboardButton(text="🏆 Jadval", callback_data="table")
-            ],
-            [
-                InlineKeyboardButton(text="🎮 Matchlar", callback_data="matches")
-            ],
-            [
-                InlineKeyboardButton(text="ℹ️ Turnir haqida", callback_data="about")
-            ]
+    keyboard = [
+        [register_button],
+        [
+            InlineKeyboardButton(text="👥 Ishtirokchilar", callback_data="players"),
+            InlineKeyboardButton(text="🏆 Jadval", callback_data="table")
+        ],
+        [
+            InlineKeyboardButton(text="🎮 Matchlar", callback_data="matches")
+        ],
+        [
+            InlineKeyboardButton(text="ℹ️ Turnir haqida", callback_data="about")
         ]
-    )
+    ]
 
+    # ADMIN TEKSHIRUV
+    if user_id in ADMIN_IDS:
+
+        keyboard.append([
+            InlineKeyboardButton(
+                text="⏳ To'lovni tasdiqlash",
+                callback_data="pending_payments"
+            )
+        ])
+
+        keyboard.append([
+            InlineKeyboardButton(
+                text="👥 Admin panel",
+                callback_data="admin_panel"
+            )
+        ])
+
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
 # ================= BACK MENU =================
 
@@ -67,9 +83,8 @@ Quyidagi menyudan foydalaning.
 
     await message.answer(
         text,
-        reply_markup=await main_menu()
+        reply_markup=await main_menu(message.from_user.id)
     )
-
 
 # ================= ABOUT =================
 
@@ -188,7 +203,7 @@ async def back(callback: types.CallbackQuery):
 
     await callback.message.edit_text(
         text,
-        reply_markup=await main_menu()
+        reply_markup=await main_menu(callback.from_user.id)
     )
 
     await callback.answer()
