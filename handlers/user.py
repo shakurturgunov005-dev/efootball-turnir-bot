@@ -70,11 +70,16 @@ def main_menu(user_id, players_count):
 
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
-
 @router.message(CommandStart())
 async def start(message: types.Message):
 
-    await message.answer(f"Sizning ID: {message.from_user.id}")
+    await message.answer(
+        f"""
+USER ID: {message.from_user.id}
+ADMIN IDS: {ADMIN_IDS}
+IS ADMIN: {message.from_user.id in ADMIN_IDS}
+"""
+    )
 
     players = await db.get_all_players(paid_only=True)
     players_count = len(players)
