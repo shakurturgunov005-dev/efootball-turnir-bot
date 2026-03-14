@@ -14,7 +14,6 @@ async def main_menu():
     players = await db.get_all_players()
     count = len(players)
 
-    # turnir to'lgan bo'lsa
     if count >= MAX_PLAYERS:
         register_button = InlineKeyboardButton(
             text=f"❌ Turnir to'ldi ({count}/{MAX_PLAYERS})",
@@ -43,12 +42,13 @@ async def main_menu():
     )
 
 
-# ================= EXIT BUTTON =================
+# ================= BACK =================
 
-def exit_button():
+async def back_menu():
+
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="❌ Exit", callback_data="back")]
+            [InlineKeyboardButton(text="⬅️ Orqaga", callback_data="back")]
         ]
     )
 
@@ -89,7 +89,7 @@ async def about(callback: types.CallbackQuery):
 
     await callback.message.edit_text(
         text,
-        reply_markup=exit_button(),
+        reply_markup=await back_menu(),
         parse_mode="Markdown"
     )
 
@@ -109,12 +109,14 @@ async def players(callback: types.CallbackQuery):
         text = "👥 **Ishtirokchilar ro'yxati**\n\n"
 
         for i, p in enumerate(players, 1):
+
             username = f"@{p['username']}" if p['username'] else "username yo'q"
+
             text += f"{i}. {p['full_name']} - {username}\n"
 
     await callback.message.edit_text(
         text,
-        reply_markup=exit_button(),
+        reply_markup=await back_menu(),
         parse_mode="Markdown"
     )
 
@@ -134,7 +136,7 @@ Jadval hali shakllanmagan.
 
     await callback.message.edit_text(
         text,
-        reply_markup=exit_button(),
+        reply_markup=await back_menu(),
         parse_mode="Markdown"
     )
 
@@ -154,7 +156,7 @@ Matchlar tez orada e'lon qilinadi.
 
     await callback.message.edit_text(
         text,
-        reply_markup=exit_button(),
+        reply_markup=await back_menu(),
         parse_mode="Markdown"
     )
 
@@ -172,7 +174,7 @@ async def tournament_full(callback: types.CallbackQuery):
     )
 
 
-# ================= EXIT =================
+# ================= BACK =================
 
 @router.callback_query(F.data == "back")
 async def back(callback: types.CallbackQuery):
