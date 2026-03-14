@@ -1,18 +1,34 @@
 from aiogram import Router, types, F
 from aiogram.filters import CommandStart
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from database import db
+from config import MAX_PLAYERS
 
 router = Router()
 
 
 # ================= MAIN MENU =================
 
-def main_menu():
+async def main_menu():
+
+    players = await db.get_all_players()
+    count = len(players)
+
+    # turnir to'lgan bo'lsa
+    if count >= MAX_PLAYERS:
+        register_button = InlineKeyboardButton(
+            text=f"❌ Turnir to'ldi ({count}/{MAX_PLAYERS})",
+            callback_data="tournament_full"
+        )
+    else:
+        register_button = InlineKeyboardButton(
+            text=f"📝 Ro'yxatdan o'tish ({count}/{MAX_PLAYERS})",
+            callback_data="register"
+        )
+
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [
-                InlineKeyboardButton(text="📝 Ro'yxatdan o'tish", callback_data="register")
-            ],
+            [register_button],
             [
                 InlineKeyboardButton(text="👥 Ishtirokchilar", callback_data="players"),
                 InlineKeyboardButton(text="🏆 Jadval", callback_data="table")
@@ -27,12 +43,12 @@ def main_menu():
     )
 
 
-# ================= BACK BUTTON =================
+# ================= EXIT BUTTON =================
 
-def back_button():
+def exit_button():
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="⬅️ Exit", callback_data="back")]
+            [InlineKeyboardButton(text="❌ Exit", callback_data="back")]
         ]
     )
 
@@ -52,7 +68,7 @@ Quyidagi menyudan foydalaning.
 
     await message.answer(
         text,
-        reply_markup=main_menu(),
+        reply_markup=await main_menu(),
         parse_mode="Markdown"
     )
 
@@ -73,7 +89,7 @@ async def about(callback: types.CallbackQuery):
 
     await callback.message.edit_text(
         text,
-        reply_markup=back_button(),
+        reply_markup=exit_button(),
         parse_mode="Markdown"
     )
 
@@ -85,15 +101,20 @@ async def about(callback: types.CallbackQuery):
 @router.callback_query(F.data == "players")
 async def players(callback: types.CallbackQuery):
 
-    text = """
-👥 **Ishtirokchilar ro'yxati**
+    players = await db.get_all_players()
 
-Hozircha ro'yxat shakllanmoqda.
-"""
+    if not players:
+        text = "👥 Hali ishtirokchilar yo'q."
+    else:
+        text = "👥 **Ishtirokchilar ro'yxati**\n\n"
+
+        for i, p in enumerate(players, 1):
+            username = f"@{p['username']}" if p['username'] else "username yo'q"
+            text += f"{i}. {p['full_name']} - {username}\n"
 
     await callback.message.edit_text(
         text,
-        reply_markup=back_button(),
+        reply_markup=exit_button(),
         parse_mode="Markdown"
     )
 
@@ -113,7 +134,7 @@ Jadval hali shakllanmagan.
 
     await callback.message.edit_text(
         text,
-        reply_markup=back_button(),
+        reply_markup=exit_button(),
         parse_mode="Markdown"
     )
 
@@ -133,34 +154,25 @@ Matchlar tez orada e'lon qilinadi.
 
     await callback.message.edit_text(
         text,
-        reply_markup=back_button(),
+        reply_markup=exit_button(),
         parse_mode="Markdown"
     )
 
     await callback.answer()
 
 
-# ================= REGISTER =================
+# ================= TOURNAMENT FULL =================
 
-@router.callback_query(F.data == "register")
-async def register(callback: types.CallbackQuery):
+@router.callback_query(F.data == "tournament_full")
+async def tournament_full(callback: types.CallbackQuery):
 
-    text = """
-📝 **Turnirga ro'yxatdan o'tish**
-
-Ro'yxatdan o'tish uchun admin bilan bog'laning.
-"""
-
-    await callback.message.edit_text(
-        text,
-        reply_markup=back_button(),
-        parse_mode="Markdown"
+    await callback.answer(
+        "❌ Turnir allaqachon to'lgan!",
+        show_alert=True
     )
 
-    await callback.answer()
 
-
-# ================= BACK =================
+# ================= EXIT =================
 
 @router.callback_query(F.data == "back")
 async def back(callback: types.CallbackQuery):
@@ -173,7 +185,7 @@ async def back(callback: types.CallbackQuery):
 
     await callback.message.edit_text(
         text,
-        reply_markup=main_menu(),
+        reply_markup=await main_menu(),
         parse_mode="Markdown"
     )
 
