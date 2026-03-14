@@ -1,89 +1,74 @@
-from aiogram import Router, types, F
-from aiogram.filters import Command
+from aiogram import Router, types
+from aiogram.filters import CommandStart
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from database import db
+from config import ADMIN_IDS, MAX_PLAYERS
 
 router = Router()
 
 
-def main_menu():
+def main_menu(user_id):
 
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
+    keyboard = [
+        [
+            InlineKeyboardButton(
+                text="📝 Ro'yxatdan o'tish",
+                callback_data="register"
+            )
+        ],
 
-            [
-                InlineKeyboardButton(text="📝 Ro'yxatdan o'tish", callback_data="register"),
-                InlineKeyboardButton(text="👥 Ishtirokchilar", callback_data="players")
-            ],
+        [
+            InlineKeyboardButton(
+                text="👥 Ishtirokchilar",
+                callback_data="players"
+            ),
+            InlineKeyboardButton(
+                text="🏆 Jadval",
+                callback_data="table"
+            )
+        ],
 
-            [
-                InlineKeyboardButton(text="🏆 Turnir bracket", callback_data="bracket"),
-                InlineKeyboardButton(text="📊 Statistika", callback_data="stats")
-            ],
+        [
+            InlineKeyboardButton(
+                text="🎮 Matchlar",
+                callback_data="matches"
+            )
+        ],
 
-            [
-                InlineKeyboardButton(text="ℹ️ Turnir haqida", callback_data="info")
-            ]
-
+        [
+            InlineKeyboardButton(
+                text="ℹ️ Turnir haqida",
+                callback_data="about"
+            )
         ]
-    )
+    ]
 
-    return keyboard
+    if user_id in ADMIN_IDS:
+
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    text="👑 Admin panel",
+                    callback_data="admin_panel"
+                )
+            ]
+        )
+
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
 
-@router.message(Command("start"))
+@router.message(CommandStart())
 async def start(message: types.Message):
 
-    text = """
-🎮 eFootball TURNIR BOTI 🤖
+    players = await db.get_all_players(paid_only=True)
 
-🏆 Professional eFootball turniriga xush kelibsiz!
+    text = f"""
+🎮 eFootball TURNIR BOTI
 
-Quyidagi menyudan foydalaning 👇
+🏆 Professional turnirga xush kelibsiz!
 """
 
     await message.answer(
         text,
-        reply_markup=main_menu()
+        reply_markup=main_menu(message.from_user.id)
     )
-
-
-# ================= PLAYERS =================
-
-@router.callback_query(F.data == "players")
-async def players(callback: types.CallbackQuery):
-
-    players = await db.get_all_players(paid_only=True)
-
-    if not players:
-
-        text = "❌ Hali tasdiqlangan ishtirokchilar yo'q."
-
-        await callback.message.edit_text(
-            text,
-            reply_markup=main_menu()
-        )
-
-        return
-
-    text = "👥 ISHTIROKCHILAR\n\n"
-
-    for i, p in enumerate(players, 1):
-
-        tg = f"https://t.me/{p['telegram_username']}"
-
-        text += f"""
-№ {i}
-
-1️⃣ Ismi: {p['full_name']}
-2️⃣ eFootball username: {p['username']}
-3️⃣ Telegram: {tg}
-
-"""
-
-    await callback.message.edit_text(
-        text,
-        reply_markup=main_menu()
-    )
-
-    await callback.answer()
