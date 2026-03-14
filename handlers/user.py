@@ -45,7 +45,7 @@ def main_menu(user_id, players_count):
     ]
 
     # ADMIN TEKSHIRISH
-    if int(user_id) in ADMIN_IDS:
+    if str(user_id) in str(ADMIN_IDS):
 
         keyboard.append([
             InlineKeyboardButton(
