@@ -88,8 +88,7 @@ async def handle_registration(message: types.Message):
         message.from_user.id
     )
 
-    # YANGI FUNKSIYA (ISHTIROKCHI SONI)
-
+    # HOZIRGI RO'YXAT SONI
     players = await db.get_all_players()
     count = len(players)
 
@@ -101,13 +100,12 @@ async def handle_registration(message: types.Message):
 """
     )
 
-    # TURNIR TO'LGANINI AYTISH
-
+    # TURNIR TO'LGANI
     if count >= MAX_PLAYERS:
 
         await message.answer(
-            """
-🏆 Turnir uchun 16 ishtirokchi to‘ldi!
+            f"""
+🏆 Turnir uchun {MAX_PLAYERS} ishtirokchi to‘ldi!
 
 ⚽ Turnir boshlandi
 """
