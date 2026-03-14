@@ -66,6 +66,7 @@ async def handle_payment_photo(message: types.Message):
 
     photo_id = message.photo[-1].file_id
 
+    # chekni saqlash
     await db.update_payment_status(user_id, photo_id)
 
     await message.answer(
@@ -115,7 +116,8 @@ async def approve_payment(callback: types.CallbackQuery):
 
     user_id = int(callback.data.split("_")[1])
 
-    await db.update_payment_status(user_id)
+    # TO'LOVNI TASDIQLASH
+    await db.confirm_payment(user_id)
 
     await callback.message.edit_caption(
         callback.message.caption + "\n\n✅ To'lov tasdiqlandi"
