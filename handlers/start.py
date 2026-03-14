@@ -83,7 +83,7 @@ async def about(callback: types.CallbackQuery):
 
 🎮 O'yin: eFootball  
 👥 Ishtirokchilar: 16  
-🏆 Format: PlayOff  
+🏆 Format: Guruh bosqichi + Play-Off  
 💰 Badal: 300₽
 """
 
