@@ -1,5 +1,6 @@
 from aiogram import Router, types, F
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.filters import Command
 from database import db
 from config import ADMIN_IDS, MAX_PLAYERS, CHANNEL_ID
 import random
@@ -32,32 +33,41 @@ async def generate_matches():
             )
 
 
-# ADMIN KEYBOARD
-def admin_keyboard():
-    return ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="📋 Ishtirokchilar")],
-            [KeyboardButton(text="📊 Statistika")],
-            [KeyboardButton(text="📢 Post yuborish")],
-            [KeyboardButton(text="💰 To'lov tekshirish")],
-            [KeyboardButton(text="⚽️ Match yaratish")],
-            [KeyboardButton(text="🗑 Tozalash")]
-        ],
-        resize_keyboard=True
+# INLINE ADMIN MENU
+def admin_menu():
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="📋 Ishtirokchilar", callback_data="admin_players")],
+            [InlineKeyboardButton(text="📊 Statistika", callback_data="admin_stats")],
+            [InlineKeyboardButton(text="📢 Post yuborish", callback_data="admin_post")],
+            [InlineKeyboardButton(text="💰 To'lov tekshirish", callback_data="admin_payments")],
+            [InlineKeyboardButton(text="⚽ Match yaratish", callback_data="admin_match")],
+            [InlineKeyboardButton(text="🗑 Tozalash", callback_data="admin_clear")]
+        ]
     )
 
 
-# PLAYERS LIST
-@router.message(F.text == "📋 Ishtirokchilar")
-async def show_players(message: types.Message):
+# ADMIN PANEL
+@router.message(Command("admin"))
+async def admin_panel(message: types.Message):
 
     if message.from_user.id not in ADMIN_IDS:
         return
 
+    await message.answer(
+        "👑 ADMIN PANEL",
+        reply_markup=admin_menu()
+    )
+
+
+# PLAYERS LIST
+@router.callback_query(F.data == "admin_players")
+async def show_players(callback: types.CallbackQuery):
+
     players = await db.get_all_players(paid_only=True)
 
     if not players:
-        await message.answer("📭 Hali ishtirokchilar yo'q.")
+        await callback.message.edit_text("📭 Hali ishtirokchilar yo'q.", reply_markup=admin_menu())
         return
 
     text = f"📋 Ishtirokchilar ({len(players)}/{MAX_PLAYERS})\n\n"
@@ -66,15 +76,12 @@ async def show_players(message: types.Message):
         username = f"@{p['username']}" if p['username'] else "username yo'q"
         text += f"{p['id']}. {p['full_name']} - {username}\n   ✅ To'lov qilingan\n\n"
 
-    await message.answer(text)
+    await callback.message.edit_text(text, reply_markup=admin_menu())
 
 
 # STATISTICS
-@router.message(F.text == "📊 Statistika")
-async def show_stats(message: types.Message):
-
-    if message.from_user.id not in ADMIN_IDS:
-        return
+@router.callback_query(F.data == "admin_stats")
+async def show_stats(callback: types.CallbackQuery):
 
     total, paid, waiting = await db.get_statistics()
 
@@ -88,15 +95,12 @@ async def show_stats(message: types.Message):
 ━━━━━━━━━━━━━━━━━━
 """
 
-    await message.answer(text)
+    await callback.message.edit_text(text, reply_markup=admin_menu())
 
 
 # PAYMENT CHECK
-@router.message(F.text == "💰 To'lov tekshirish")
-async def check_payments(message: types.Message):
-
-    if message.from_user.id not in ADMIN_IDS:
-        return
+@router.callback_query(F.data == "admin_payments")
+async def check_payments(callback: types.CallbackQuery):
 
     async with db.pool.acquire() as conn:
         rows = await conn.fetch(
@@ -104,8 +108,10 @@ async def check_payments(message: types.Message):
         )
 
     if not rows:
-        await message.answer("📭 Tekshirilmagan to'lovlar yo'q.")
+        await callback.message.edit_text("📭 Tekshirilmagan to'lovlar yo'q.", reply_markup=admin_menu())
         return
+
+    await callback.message.edit_text("💰 Tekshirilayotgan to'lovlar...", reply_markup=admin_menu())
 
     for row in rows:
 
@@ -118,82 +124,22 @@ async def check_payments(message: types.Message):
             ]
         )
 
-        await message.answer(
+        await callback.message.answer(
             f"💰 Yangi to'lov\n\n👤 {row['full_name']}\n🆔 {row['user_id']}",
             reply_markup=keyboard
         )
 
         if row['payment_photo']:
-            await message.bot.send_photo(
-                message.chat.id,
+            await callback.bot.send_photo(
+                callback.message.chat.id,
                 row['payment_photo'],
                 caption="📸 To'lov cheki"
             )
 
 
-# CONFIRM PAYMENT
-@router.callback_query(F.data.startswith("confirm_"))
-async def confirm_payment(callback: types.CallbackQuery):
-
-    if callback.from_user.id not in ADMIN_IDS:
-        await callback.answer("❌ Ruxsat yo'q", show_alert=True)
-        return
-
-    user_id = int(callback.data.replace("confirm_", ""))
-
-    await db.update_payment_status(user_id)
-
-    user = await db.get_player_by_user_id(user_id)
-
-    paid_players = await db.get_all_players(paid_only=True)
-    count = len(paid_players)
-
-    try:
-        await callback.bot.send_message(
-            user_id,
-            f"✅ Tabriklaymiz!\n\nTo'lovingiz tasdiqlandi.\nSiz {count}-ishtirokchi bo'ldingiz!"
-        )
-    except:
-        pass
-
-    await callback.message.edit_text(f"✅ To'lov tasdiqlandi: {user['full_name']}")
-    await callback.answer("✅ Tasdiqlandi")
-
-
-# REJECT PAYMENT
-@router.callback_query(F.data.startswith("reject_"))
-async def reject_payment(callback: types.CallbackQuery):
-
-    if callback.from_user.id not in ADMIN_IDS:
-        await callback.answer("❌ Ruxsat yo'q", show_alert=True)
-        return
-
-    user_id = int(callback.data.replace("reject_", ""))
-
-    async with db.pool.acquire() as conn:
-        await conn.execute(
-            "UPDATE players SET payment_photo=NULL WHERE user_id=$1",
-            user_id
-        )
-
-    try:
-        await callback.bot.send_message(
-            user_id,
-            "❌ To'lov qabul qilinmadi.\n\nIltimos qayta yuboring."
-        )
-    except:
-        pass
-
-    await callback.message.edit_text("❌ To'lov rad etildi")
-    await callback.answer()
-
-
-# TOURNAMENT POST
-@router.message(F.text == "📢 Post yuborish")
-async def send_post(message: types.Message):
-
-    if message.from_user.id not in ADMIN_IDS:
-        return
+# POST
+@router.callback_query(F.data == "admin_post")
+async def send_post(callback: types.CallbackQuery):
 
     players = await db.get_all_players()
     count = len(players)
@@ -219,37 +165,27 @@ To'lov tasdiqlangandan so'ng ishtirokchi turnir ro'yxatiga kiritiladi.
 
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text="⚽️ Turnirga qatnashish",
-                    callback_data="register"
-                )
-            ]
+            [InlineKeyboardButton(text="⚽️ Turnirga qatnashish", callback_data="register")]
         ]
     )
 
-    await message.bot.send_message(
-        chat_id=CHANNEL_ID,
-        text=text,
+    await callback.bot.send_message(
+        CHANNEL_ID,
+        text,
         reply_markup=keyboard
     )
 
-    await message.answer("✅ Turnir posti kanalga yuborildi!")
+    await callback.answer("Post yuborildi")
 
 
 # CREATE MATCHES
-@router.message(F.text == "⚽️ Match yaratish")
-async def create_matches(message: types.Message):
-
-    if message.from_user.id not in ADMIN_IDS:
-        return
+@router.callback_query(F.data == "admin_match")
+async def create_matches(callback: types.CallbackQuery):
 
     players = await db.get_all_players(paid_only=True)
 
     if len(players) < MAX_PLAYERS:
-        await message.answer(
-            f"❌ Hali yetarli o'yinchi yo'q.\n\nKerak: {MAX_PLAYERS}\nHozir: {len(players)}"
-        )
+        await callback.answer("❌ Yetarli o'yinchi yo'q", show_alert=True)
         return
 
     await generate_matches()
@@ -266,20 +202,13 @@ async def create_matches(message: types.Message):
 
         text += f"{i}. {p1['full_name']} ⚔️ {p2['full_name']}\n"
 
-    await message.answer(text)
-
-    await message.bot.send_message(
-        CHANNEL_ID,
-        text
-    )
+    await callback.message.answer(text)
+    await callback.bot.send_message(CHANNEL_ID, text)
 
 
 # CLEAR DATABASE
-@router.message(F.text == "🗑 Tozalash")
-async def clear_all(message: types.Message):
-
-    if message.from_user.id not in ADMIN_IDS:
-        return
+@router.callback_query(F.data == "admin_clear")
+async def clear_all(callback: types.CallbackQuery):
 
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
@@ -290,7 +219,7 @@ async def clear_all(message: types.Message):
         ]
     )
 
-    await message.answer(
+    await callback.message.edit_text(
         "⚠️ Barcha ma'lumotlarni tozalashni xohlaysizmi?",
         reply_markup=keyboard
     )
@@ -298,12 +227,6 @@ async def clear_all(message: types.Message):
 
 @router.callback_query(F.data == "clear_yes")
 async def clear_yes(callback: types.CallbackQuery):
-
-    if callback.from_user.id not in ADMIN_IDS:
-        await callback.answer("❌ Ruxsat yo'q", show_alert=True)
-        return
-
-    await callback.answer("🧹 Ma'lumotlar tozalanmoqda...")
 
     async with db.pool.acquire() as conn:
         await conn.execute("""
@@ -317,9 +240,4 @@ async def clear_yes(callback: types.CallbackQuery):
 @router.callback_query(F.data == "clear_no")
 async def clear_no(callback: types.CallbackQuery):
 
-    if callback.from_user.id not in ADMIN_IDS:
-        await callback.answer()
-        return
-
     await callback.message.edit_text("❌ Bekor qilindi")
-    await callback.answer()
