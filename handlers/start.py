@@ -2,7 +2,7 @@ from aiogram import Router, types, F
 from aiogram.filters import CommandStart
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from database import db
-from config import MAX_PLAYERS
+from config import MAX_PLAYERS, ADMIN_IDS
 
 router = Router()
 
