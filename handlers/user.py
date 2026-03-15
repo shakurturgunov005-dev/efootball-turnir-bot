@@ -1,4 +1,4 @@
-from aiogram import Router, types
+from aiogram import Router, types, F
 from aiogram.filters import CommandStart
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
@@ -70,6 +70,7 @@ def main_menu(user_id, players_count):
 
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
+
 @router.message(CommandStart())
 async def start(message: types.Message):
 
@@ -97,3 +98,48 @@ IS ADMIN: {message.from_user.id in ADMIN_IDS}
             players_count
         )
     )
+
+
+# ================= /players komandasi =================
+
+@router.message(F.text == "/players")
+async def show_players(message: types.Message):
+
+    players = await db.get_all_players(paid_only=True)
+
+    if not players:
+        await message.answer("📋 Hozircha tasdiqlangan ishtirokchilar yo'q.")
+        return
+
+    text = "🏆 TURNIR ISHTIROKCHILARI\n\n"
+
+    for i, player in enumerate(players, start=1):
+        text += f"{i}. {player['full_name']}\n"
+
+    text += f"\n📊 Jami: {len(players)}/16"
+
+    await message.answer(text)
+
+
+# ================= TUGMA ORQALI ISHTIROKCHILAR =================
+
+@router.callback_query(F.data == "players")
+async def players_button(callback: types.CallbackQuery):
+
+    players = await db.get_all_players(paid_only=True)
+
+    if not players:
+        await callback.message.answer("📋 Hozircha tasdiqlangan ishtirokchilar yo'q.")
+        await callback.answer()
+        return
+
+    text = "🏆 TURNIR ISHTIROKCHILARI\n\n"
+
+    for i, player in enumerate(players, start=1):
+        text += f"{i}. {player['full_name']}\n"
+
+    text += f"\n📊 Jami: {len(players)}/16"
+
+    await callback.message.answer(text)
+
+    await callback.answer()
