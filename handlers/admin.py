@@ -213,7 +213,7 @@ async def delete_player(callback: types.CallbackQuery):
     )
 
 
-# ================= CLEAR TOURNAMENT =================
+# ================= CLEAR TOURNAMENT (TASDIQLASH) =================
 
 @router.callback_query(F.data == "clear_tournament")
 async def clear_tournament(callback: types.CallbackQuery):
@@ -221,6 +221,28 @@ async def clear_tournament(callback: types.CallbackQuery):
     if callback.from_user.id not in ADMIN_IDS:
         await callback.answer("❌ Siz admin emassiz", show_alert=True)
         return
+
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="✅ Ha", callback_data="confirm_clear"),
+                InlineKeyboardButton(text="❌ Yo'q", callback_data="cancel_clear")
+            ]
+        ]
+    )
+
+    await callback.message.edit_text(
+        "⚠️ Siz rostdan ham turnirni tozalamoqchimisiz?",
+        reply_markup=keyboard
+    )
+
+    await callback.answer()
+
+
+# ================= CONFIRM CLEAR =================
+
+@router.callback_query(F.data == "confirm_clear")
+async def confirm_clear(callback: types.CallbackQuery):
 
     await db.delete_all_players()
 
@@ -238,6 +260,19 @@ Barcha ishtirokchilar o'chirildi.
     )
 
     await callback.answer("Turnir tozalandi")
+
+
+# ================= CANCEL CLEAR =================
+
+@router.callback_query(F.data == "cancel_clear")
+async def cancel_clear(callback: types.CallbackQuery):
+
+    await callback.message.edit_text(
+        "❌ Turnir tozalash bekor qilindi.",
+        reply_markup=admin_menu()
+    )
+
+    await callback.answer("Bekor qilindi")
 
 
 # ================= STATS =================
