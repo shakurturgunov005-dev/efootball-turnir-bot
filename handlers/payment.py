@@ -67,7 +67,7 @@ async def handle_payment_photo(message: types.Message):
     photo_id = message.photo[-1].file_id
 
     # chekni saqlash
-    await db.save_payment_photo(user_id, photo_id)
+    await db.update_payment_status(user_id, photo_id)
 
     await message.answer(
         "✅ To'lov cheki qabul qilindi. Admin tekshirgach, ro'yxatdan o'tasiz."
