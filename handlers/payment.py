@@ -1,7 +1,7 @@
 from aiogram import Router, types, F
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from database import db
-from config import CARD_NUMBER, CARD_HOLDER, PAYMENT_AMOUNT, RUB, ADMIN_IDS
+from config import CARD_NUMBER, CARD_HOLDER, PAYMENT_AMOUNT, RUB, ADMIN_IDS, GROUP_ID, CHANNEL_ID
 import asyncio
 
 router = Router()
