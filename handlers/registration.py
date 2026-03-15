@@ -92,14 +92,6 @@ async def handle_registration(message: types.Message):
     players = await db.get_all_players()
     count = len(players)
 
-    await message.answer(
-        f"""
-✅ Yangi ishtirokchi qo'shildi
-
-📊 Hozir: {count}/{MAX_PLAYERS}
-"""
-    )
-
     # TURNIR TO'LGANI
     if count >= MAX_PLAYERS:
 
