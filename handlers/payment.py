@@ -121,6 +121,26 @@ async def approve_payment(callback: types.CallbackQuery):
     players = await db.get_all_players(paid_only=True)
     count = len(players)
 
+if count == 16:
+
+    close_text = """
+🚫 RO'YXAT YOPILDI
+
+🏆 Turnir uchun 16 ta ishtirokchi yig'ildi.
+
+Tez orada o'yin jadvali e'lon qilinadi.
+"""
+
+    # adminlarga
+    for admin_id in ADMIN_IDS:
+        await callback.bot.send_message(admin_id, close_text)
+
+    # guruhga
+    await callback.bot.send_message(GROUP_ID, close_text)
+
+    # kanalga
+    await callback.bot.send_message(CHANNEL_ID, close_text)
+
     text = f"""
 ✅ Yangi ishtirokchi qo'shildi
 
