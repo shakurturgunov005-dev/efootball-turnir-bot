@@ -108,7 +108,6 @@ async def handle_payment_photo(message: types.Message):
         except Exception as e:
             print(e)
 
-
 # ================= ADMIN TASDIQLASH =================
 
 @router.callback_query(F.data.startswith("approve_"))
@@ -121,32 +120,27 @@ async def approve_payment(callback: types.CallbackQuery):
     players = await db.get_all_players(paid_only=True)
     count = len(players)
 
+    # 16 ta bo'lsa boshqa text chiqadi
     if count == 16:
 
-        close_text = """
+        text = f"""
+✅ Yangi ishtirokchi qo'shildi
+
+📊 Hozir: {count}/16
+
 🚫 RO'YXAT YOPILDI
-
 🏆 Turnir uchun 16 ta ishtirokchi yig'ildi.
-
-Tez orada o'yin jadvali e'lon qilinadi.
 """
 
-        # adminlarga
-        for admin_id in ADMIN_IDS:
-            await callback.bot.send_message(admin_id, close_text)
+    else:
 
-        # guruhga
-        await callback.bot.send_message(GROUP_ID, close_text)
-
-        # kanalga
-        await callback.bot.send_message(CHANNEL_ID, close_text)
-
-    text = f"""
+        text = f"""
 ✅ Yangi ishtirokchi qo'shildi
 
 📊 Hozir: {count}/16
 """
 
+    # adminlarga
     for admin_id in ADMIN_IDS:
         await callback.bot.send_message(admin_id, text)
 
