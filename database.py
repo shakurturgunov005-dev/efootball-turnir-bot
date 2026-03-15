@@ -84,6 +84,18 @@ class Database:
                 user_id
             )
 
+    # ❌ TO'LOVNI RAD ETISH
+    async def reject_payment(self, user_id):
+        async with self.pool.acquire() as conn:
+            await conn.execute(
+                """
+                UPDATE players
+                SET payment_photo=NULL
+                WHERE user_id=$1
+                """,
+                user_id
+            )
+
     # ⏳ KUTILAYOTGAN TO'LOVLAR
     async def get_pending_payments(self):
         async with self.pool.acquire() as conn:
