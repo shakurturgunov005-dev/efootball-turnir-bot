@@ -118,7 +118,7 @@ async def approve_payment(callback: types.CallbackQuery):
 
     await db.confirm_payment(user_id)
 
-    players = await db.get_all_players()
+    players = await db.get_all_players(paid_only=True)
     count = len(players)
 
     text = f"""
@@ -129,6 +129,12 @@ async def approve_payment(callback: types.CallbackQuery):
 
     for admin_id in ADMIN_IDS:
         await callback.bot.send_message(admin_id, text)
+
+    # guruhga
+    await callback.bot.send_message(GROUP_ID, text)
+
+    # kanalga
+    await callback.bot.send_message(CHANNEL_ID, text)
 
     await callback.message.edit_caption(
         callback.message.caption + "\n\n✅ To'lov tasdiqlandi"
