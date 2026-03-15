@@ -68,6 +68,13 @@ class Database:
                 "DELETE FROM players"
             )
 
+    # 🧹 FAQAT TO'LOV QILMAGANLARNI TOZALASH (YANGI FUNKSIYA)
+    async def delete_unpaid_players(self):
+        async with self.pool.acquire() as conn:
+            await conn.execute(
+                "DELETE FROM players WHERE payment_status=FALSE"
+            )
+
     # ================= PAYMENT =================
 
     async def update_payment_status(self, user_id, photo_id):
