@@ -118,6 +118,18 @@ async def approve_payment(callback: types.CallbackQuery):
 
     await db.confirm_payment(user_id)
 
+    players = await db.get_all_players()
+    count = len(players)
+
+    text = f"""
+✅ Yangi ishtirokchi qo'shildi
+
+📊 Hozir: {count}/16
+"""
+
+    for admin_id in ADMIN_IDS:
+        await callback.bot.send_message(admin_id, text)
+
     await callback.message.edit_caption(
         callback.message.caption + "\n\n✅ To'lov tasdiqlandi"
     )
@@ -128,7 +140,6 @@ async def approve_payment(callback: types.CallbackQuery):
     )
 
     await callback.answer("Tasdiqlandi")
-
 
 # ================= ADMIN RAD ETISH =================
 
